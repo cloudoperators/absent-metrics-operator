@@ -151,8 +151,7 @@ func (lm labelsMap) String() string {
 // Set implements the flag.Value interface.
 func (lm *labelsMap) Set(in string) error {
 	labels := make(labelsMap)
-	list := strings.Split(in, ",")
-	for _, v := range list {
+	for v := range strings.SplitSeq(in, ",") {
 		labels[strings.TrimSpace(v)] = true
 	}
 

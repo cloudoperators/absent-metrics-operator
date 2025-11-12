@@ -232,12 +232,12 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 		// Example: support_group = "containers", service = "go-pmtud",
 		// and metric = "go_pmtud_sent_error_peer_total" will result in
 		// "AbsentContainersGoPmtudGoPmtudSentErrorPeerTotal" as the alert name.
-		var alertName string
+		var alertName strings.Builder
 		var prevW string
 		for _, v := range words {
 			w := strings.ToLower(v) // convert to lowercase for comparison
 			if w != prevW {
-				alertName += cases.Title(language.English).String(w)
+				fmt.Fprint(&alertName, cases.Title(language.English).String(w))
 				prevW = w
 			}
 		}
@@ -256,7 +256,7 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 
 		duration := monitoringv1.Duration("10m")
 		out = append(out, monitoringv1.Rule{
-			Alert:       alertName,
+			Alert:       alertName.String(),
 			Expr:        intstr.FromString(fmt.Sprintf("absent(%s)", m)),
 			For:         &duration,
 			Labels:      absenceRuleLabels,

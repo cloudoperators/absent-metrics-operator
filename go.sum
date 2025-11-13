@@ -183,8 +183,8 @@ github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
 github.com/sapcc/go-api-declarations v1.17.4 h1:F4smuE9x1NJ/7NAdytJ1wekeXT3QeRaYu3L/HyWKqqo=
 github.com/sapcc/go-api-declarations v1.17.4/go.mod h1:MWmLjmvjftgyAugNUfIhsDsHIzXH1pn32cWLZpiluKg=
-github.com/sapcc/go-bits v0.0.0-20251110161015-eab3c254671f h1:Ly+DkP7Ua3h9LIxRw5e66yich7Fr3eKw4l80IORogdQ=
-github.com/sapcc/go-bits v0.0.0-20251110161015-eab3c254671f/go.mod h1:DMge7GidLysrU9IfPsWQNbIi6OvesTvj1hDXlTXEI+g=
+github.com/sapcc/go-bits v0.0.0-20251113131016-b7245870e76e h1:2WCmZZoACm5w3hghpF+wLTwDBqnkWe2E9588Y31/S4U=
+github.com/sapcc/go-bits v0.0.0-20251113131016-b7245870e76e/go.mod h1:DMge7GidLysrU9IfPsWQNbIi6OvesTvj1hDXlTXEI+g=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
 github.com/sergi/go-diff v1.4.0/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
 github.com/spf13/pflag v1.0.6 h1:jFzHGLGAlb3ruxLB8MhbI6A8+AQX/2eW4qeyNZXNp2o=

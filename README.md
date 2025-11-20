@@ -97,6 +97,13 @@ Refer to the _absence alert rule_ [definition
 documentation](./docs/absence-alert-rule-definition.md) for more information on how these
 alerts are generated and defined.
 
+## Requirements
+
+- **Kubernetes**: v1.29 or later
+- **Prometheus Operator**: v0.85 or later
+  - The operator depends on the `PrometheusRule` CRD provided by the Prometheus Operator
+- **Go**: 1.25 or later (for building from source)
+
 ## Installation
 
 You can build with `make`, install with `make install`, or `docker build`.

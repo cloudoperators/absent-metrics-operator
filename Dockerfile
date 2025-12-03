@@ -62,8 +62,8 @@ RUN set -x \
   && absent-metrics-operator --version 2>/dev/null
 
 ARG BININFO_BUILD_DATE BININFO_COMMIT_HASH BININFO_VERSION
-LABEL source_repository="https://github.com/sapcc/absent-metrics-operator" \
-  org.opencontainers.image.url="https://github.com/sapcc/absent-metrics-operator" \
+LABEL source_repository="https://github.com/cloudoperators/absent-metrics-operator" \
+  org.opencontainers.image.url="https://github.com/cloudoperators/absent-metrics-operator" \
   org.opencontainers.image.created=${BININFO_BUILD_DATE} \
   org.opencontainers.image.revision=${BININFO_COMMIT_HASH} \
   org.opencontainers.image.version=${BININFO_VERSION}

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 version = 1
 SPDX-PackageName = "absent-metrics-operator"
-SPDX-PackageDownloadLocation = "https://github.com/sapcc/absent-metrics-operator"
+SPDX-PackageDownloadLocation = "https://github.com/cloudoperators/absent-metrics-operator"
 
 [[annotations]]
 path = [

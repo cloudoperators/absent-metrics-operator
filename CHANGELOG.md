@@ -19,21 +19,13 @@ The changes should be grouped using the following categories (in order of preced
 - Deprecated: for soon-to-be removed features
 -->
 
-## [Unreleased](https://github.com/sapcc/absent-metrics-operator/compare/v0.9.4...HEAD)
+## [Unreleased]()
 
-### Added
+## 0.9.7 - 2025-12-03
 
-- New `prom-rule-name` flag which can be used to provide a template for AbsencePrometheusRule name generation and consequently absence alert rules aggregation.
-- Improved tests by adding dedicated unit tests for alert rule parsing and name generation edge-cases.
+### Changed
 
-### Fixed
-
-- Clean up of absence alert rules when a rule group is deleted.
-
-### Removed
-
-- Heuristic determination of `tier`, `service`, and `support_group` labels. These labels will now be copied over as is from the original alert rule to its corresponding absence alert rule.
-- `tier`, `service`, `ccloud/service`, and `ccloud/support-group` labels at the object level (PrometheusRule).
+- Migrate github org from sapcc to cloudoperators
 
 ## 0.9.5 - 2023-10-06
 

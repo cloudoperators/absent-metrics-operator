@@ -1,7 +1,7 @@
-# Configuration file for <https://github.com/sapcc/go-makefile-maker>
+# Configuration file for <https://github.com/cloudoperators/go-makefile-maker>
 
 metadata:
-  url: https://github.com/sapcc/absent-metrics-operator
+  url: https://github.com/cloudoperators/absent-metrics-operator
 
 binaries:
   - name: absent-metrics-operator
@@ -34,6 +34,8 @@ githubWorkflow:
     enabled: true
   pushContainerToGhcr:
     enabled: true
+    tagStrategy:
+      - edge
 
 renovate:
   enabled: true

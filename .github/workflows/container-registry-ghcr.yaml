@@ -9,8 +9,8 @@
 name: Container Registry GHCR
 "on":
   push:
-    tags:
-      - '*'
+    branches:
+      - master
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -33,7 +33,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
-          tags: ""
+          tags: |
+            # https://github.com/docker/metadata-action#typeedge
+            type=edge
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx

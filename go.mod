@@ -14,10 +14,10 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/prometheus v0.306.0
 	github.com/sapcc/go-api-declarations v1.18.0
-	github.com/sapcc/go-bits v0.0.0-20251203095104-27762f07e606
+	github.com/sapcc/go-bits v0.0.0-20251204133412-746f1e02903e
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/text v0.30.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/text v0.31.0
 	k8s.io/api v0.34.0
 	k8s.io/apimachinery v0.34.0
 	k8s.io/client-go v0.34.0
@@ -65,13 +65,13 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/mod v0.28.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/term v0.36.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.37.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect

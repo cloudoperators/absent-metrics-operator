@@ -36,6 +36,7 @@ githubWorkflow:
     enabled: true
     tagStrategy:
       - edge
+      - sha
 
 renovate:
   enabled: true

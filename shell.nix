@@ -18,6 +18,7 @@ mkShell {
     reuse
     setup-envtest
     syft
+    typos
     # keep this line if you use bash
     bashInteractive
   ];

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"testing"
 
 	"github.com/go-logr/logr"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -145,9 +146,12 @@ func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleNa
 
 		if len(absenceAlertRules) > 0 {
 			// Sort alert rules for consistent test results.
-			sort.SliceStable(absenceAlertRules, func(i, j int) bool {
-				return absenceAlertRules[i].Alert < absenceAlertRules[j].Alert
-			})
+
+			if testing.Testing() {
+				sort.SliceStable(absenceAlertRules, func(i, j int) bool {
+					return absenceAlertRules[i].Alert < absenceAlertRules[j].Alert
+				})
+			}
 
 			out = append(out, monitoringv1.RuleGroup{
 				Name:  AbsenceRuleGroupName(promRuleName, g.Name),
@@ -265,8 +269,11 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 	}
 
 	// Sort alert rules for consistent test results.
-	sort.SliceStable(out, func(i, j int) bool {
-		return out[i].Alert < out[j].Alert
-	})
+	if testing.Testing() {
+		sort.SliceStable(out, func(i, j int) bool {
+			return out[i].Alert < out[j].Alert
+		})
+	}
+
 	return out, nil
 }

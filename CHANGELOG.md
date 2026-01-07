@@ -47,7 +47,7 @@ The changes should be grouped using the following categories (in order of preced
 
 - Update Golang to 1.20.
 - Updated all dependencies to their latest version.
-- Use unpriviliged `appuser` with UID/GID 4200 instead of nobody user.
+- Use unprivileged `appuser` with UID/GID 4200 instead of nobody user.
 - Use `sigs.k8s.io/yaml` instead of `github.com/ghodss/yaml`.
 
 ## 0.9.2 - 2022-11-08

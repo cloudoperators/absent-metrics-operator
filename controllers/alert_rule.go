@@ -103,7 +103,6 @@ func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (par
 // getRegExp returns compiled regexp from the map if exists or compile new one and store
 // for the next use.
 func getRegExp(s string) (*regexp.Regexp, error) {
-
 	if re, ok := reCache.Load(s); ok {
 		return re.(*regexp.Regexp), nil
 	}
@@ -116,7 +115,6 @@ func getRegExp(s string) (*regexp.Regexp, error) {
 	reCache.Store(s, re)
 
 	return re, nil
-
 }
 
 // AbsenceRuleGroupName returns the name of the RuleGroup that holds absence alert rules

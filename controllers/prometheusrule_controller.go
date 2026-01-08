@@ -108,7 +108,7 @@ func (r *PrometheusRuleReconciler) handleObjectNotFound(ctx context.Context, key
 	// exists therefore we need to clean up any orphaned absence alert rules from any
 	// corresponding AbsencePrometheusRule.
 	//
-	// We choose to absorb the error here as returning the error and requeueing would lead
+	// We choose to absorb the error here as returning the error and requeuing would lead
 	// to getting stuck on trying to clean up the corresponding AbsencePrometheusRule.
 	// This can be a problem if there is no corresponding AbsencePrometheusRule. Instead,
 	// we wait until the next time when all AbsencePrometheusRules are requeued for

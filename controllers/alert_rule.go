@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -34,6 +35,8 @@ type metricNameExtractor struct {
 	// of a bool.
 	found map[string]struct{}
 }
+
+var reCache sync.Map
 
 // Visit implements the parser.Visitor interface.
 func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (parser.Visitor, error) {
@@ -62,7 +65,7 @@ func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (par
 				// regexp matching even where an equality would suffice.
 				// E.g.:
 				//   {__name__=~"http_requests_total"}
-				rx, err := regexp.Compile(v.Value)
+				rx, err := getRegExp(v.Value)
 				if err != nil {
 					// We do not return on error here so that any subsequent
 					// VectorSelector(s) get a chance to be processed.
@@ -95,6 +98,25 @@ func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (par
 		mex.found[name] = struct{}{}
 	}
 	return mex, nil
+}
+
+// getRegExp returns compiled regexp from the map if exists or compile new one and store
+// for the next use.
+func getRegExp(s string) (*regexp.Regexp, error) {
+
+	if re, ok := reCache.Load(s); ok {
+		return re.(*regexp.Regexp), nil
+	}
+
+	re, err := regexp.Compile(s)
+	if err != nil {
+		return nil, err
+	}
+
+	reCache.Store(s, re)
+
+	return re, nil
+
 }
 
 // AbsenceRuleGroupName returns the name of the RuleGroup that holds absence alert rules

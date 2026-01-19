@@ -97,7 +97,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "absent-metrics-operator.cloud.sap",
-		Controller:             config.Controller{MaxConcurrentReconciles: 4}})
+		Controller:             config.Controller{MaxConcurrentReconciles: 8}})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

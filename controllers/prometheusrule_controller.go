@@ -142,7 +142,11 @@ func (r *PrometheusRuleReconciler) reconcileObject(
 		// If it's an AbsencePrometheusRule then do a clean up, i.e. remove any absence
 		// metric alert rules from it that no longer belong to any PrometheusRule.
 		updatedAt, err := time.Parse(time.RFC3339, obj.Annotations[annotationOperatorUpdatedAt])
-		if err != nil && time.Now().UTC().Sub(updatedAt) < requeueInterval {
+		// Check only when updatedAt is correct
+		// in case of error updatedAt is set to 0001-01-01 00:00:00 +0000 UTC
+		// and time.Now().UTC().Sub(updatedAt) == 2562047h47m16.854775807s
+		// always < requeueInterval
+		if err == nil && time.Now().UTC().Sub(updatedAt) < requeueInterval {
 			// No need for clean up if the AbsencePrometheusRule was updated recently.
 			// We'll process it when it's next requeued.
 			return nil

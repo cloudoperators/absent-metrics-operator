@@ -145,12 +145,18 @@ func (r *PrometheusRuleReconciler) reconcileObject(
 		// Check only when updatedAt is correct
 		// in case of error updatedAt is set to 0001-01-01 00:00:00 +0000 UTC
 		// and time.Now().UTC().Sub(updatedAt) == 2562047h47m16.854775807s
-		// always < requeueInterval
+		// always > requeueInterval
 		if err == nil && time.Now().UTC().Sub(updatedAt) < requeueInterval {
 			// No need for clean up if the AbsencePrometheusRule was updated recently.
 			// We'll process it when it's next requeued.
 			return nil
 		}
+		if err != nil {
+			// annotationOperatorUpdatedAt not set leads to time parse error
+			log.V(logLevelDebug).Info("annotationOperatorUpdatedAt parse error")
+			return nil //nolint:nilerr
+		}
+
 		err = r.cleanUpAbsencePrometheusRule(ctx, obj)
 		if err == nil {
 			log.V(logLevelDebug).Info("successfully cleaned up AbsencePrometheusRule")

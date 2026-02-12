@@ -37,6 +37,7 @@ githubWorkflow:
     tagStrategy:
       - edge
       - sha
+      - semver
 
 renovate:
   enabled: true

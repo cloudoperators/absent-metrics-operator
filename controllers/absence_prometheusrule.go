@@ -120,9 +120,7 @@ func updateAnnotationTime(absencePromRule *monitoringv1.PrometheusRule) {
 }
 
 func (r *PrometheusRuleReconciler) createAbsencePrometheusRule(ctx context.Context, absencePromRule *monitoringv1.PrometheusRule) error {
-
 	sortRuleGroups(absencePromRule)
-
 	updateAnnotationTime(absencePromRule)
 	if err := r.Create(ctx, absencePromRule); err != nil {
 		return err
@@ -138,9 +136,7 @@ func (r *PrometheusRuleReconciler) patchAbsencePrometheusRule(
 	absencePromRule,
 	unmodifiedAbsencePromRule *monitoringv1.PrometheusRule,
 ) error {
-
 	sortRuleGroups(absencePromRule)
-
 	updateAnnotationTime(absencePromRule)
 	if err := r.Patch(ctx, absencePromRule, client.MergeFrom(unmodifiedAbsencePromRule)); err != nil {
 		return err

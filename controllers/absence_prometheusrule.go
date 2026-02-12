@@ -136,6 +136,7 @@ func (r *PrometheusRuleReconciler) patchAbsencePrometheusRule(
 	absencePromRule,
 	unmodifiedAbsencePromRule *monitoringv1.PrometheusRule,
 ) error {
+
 	sortRuleGroups(absencePromRule)
 	updateAnnotationTime(absencePromRule)
 	if err := r.Patch(ctx, absencePromRule, client.MergeFrom(unmodifiedAbsencePromRule)); err != nil {

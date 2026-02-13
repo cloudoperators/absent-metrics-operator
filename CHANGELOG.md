@@ -21,6 +21,17 @@ The changes should be grouped using the following categories (in order of preced
 
 ## [Unreleased]()
 
+## 0.9.8 - 2026-02-12
+
+### Changed
+
+- Increase MaxConcurrentReconciles to 8
+- Regular expressions for label matchers are precompiled and stored in a map for subsequent use
+
+### Fixed
+
+- Check requeueInterval only when the annotationOperatorUpdatedAt is correct
+
 ## 0.9.7 - 2025-12-03
 
 ### Changed

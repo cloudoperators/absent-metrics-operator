@@ -181,10 +181,10 @@ github.com/prometheus/sigv4 v0.2.0 h1:qDFKnHYFswJxdzGeRP63c4HlH3Vbn1Yf/Ao2zabtVX
 github.com/prometheus/sigv4 v0.2.0/go.mod h1:D04rqmAaPPEUkjRQxGqjoxdyJuyCh6E0M18fZr0zBiE=
 github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
-github.com/sapcc/go-api-declarations v1.18.0 h1:I73wuBKJEAeAI7nYuB4tHY9n9pydj5mgM7Zn+9fryAA=
-github.com/sapcc/go-api-declarations v1.18.0/go.mod h1:N2klk2oDNa1lsS6gUBnCDJedHy/c2vmwJ1sryckRW40=
-github.com/sapcc/go-bits v0.0.0-20260212180203-791f29d90b4b h1:dYAcW/AReT5c3tkf2VAFRnNHTyBRVBvFIWLZqojeTio=
-github.com/sapcc/go-bits v0.0.0-20260212180203-791f29d90b4b/go.mod h1:kA6Al5K59qYwsAOMoecNXxNvgiOWLiwUfRRtrS0EzK0=
+github.com/sapcc/go-api-declarations v1.19.0 h1:AdCHBhoDGC1REMJF6Rc/XLIcf4qMqjUXs5WLq83HImM=
+github.com/sapcc/go-api-declarations v1.19.0/go.mod h1:eiRrXXUeQS5C/1kKn8/KMjk0Y0goUzgDQswj30rH0Zc=
+github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776 h1:WFpq3qAk60WUoqCMYOkTRiFkpKyjQ/Wq6xUslz/3y7g=
+github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776/go.mod h1:AYC4f8FYO9DllSt4TyMwm1e5iPn32/DGIrlgXtuEsJ0=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
 github.com/sergi/go-diff v1.4.0/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
 github.com/spf13/pflag v1.0.6 h1:jFzHGLGAlb3ruxLB8MhbI6A8+AQX/2eW4qeyNZXNp2o=

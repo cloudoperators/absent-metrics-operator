@@ -37,7 +37,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/go-logr/logr/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -45,7 +45,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/onsi/ginkgo/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -53,7 +53,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/onsi/gomega/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -61,7 +61,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -69,7 +69,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/prometheus/client_golang/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -77,7 +77,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/prometheus/prometheus/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -85,7 +85,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/sapcc/go-api-declarations/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -93,7 +93,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/sapcc/go-bits/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -101,7 +101,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.uber.org/automaxprocs/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -109,7 +109,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/golang.org/x/sync/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -117,7 +117,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/text/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -125,7 +125,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/k8s.io/api/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -133,7 +133,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/k8s.io/apimachinery/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -141,7 +141,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/k8s.io/client-go/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -149,7 +149,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/sigs.k8s.io/controller-runtime/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -157,7 +157,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/sigs.k8s.io/yaml/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -165,7 +165,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/cloud.google.com/go/auth/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -173,7 +173,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/cloud.google.com/go/auth/oauth2adapt/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -181,7 +181,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/cloud.google.com/go/compute/metadata/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -189,7 +189,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/Azure/azure-sdk-for-go/sdk/azcore/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -197,7 +197,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/Azure/azure-sdk-for-go/sdk/azidentity/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -205,7 +205,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/Azure/azure-sdk-for-go/sdk/internal/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -213,7 +213,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/AzureAD/microsoft-authentication-library-for-go/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -221,7 +221,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/Masterminds/semver/v3/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -229,7 +229,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/alecthomas/units/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -237,7 +237,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -245,7 +245,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/config/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -253,7 +253,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/credentials/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -261,7 +261,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/feature/ec2/imds/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -269,7 +269,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/internal/configsources/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -277,7 +277,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -285,7 +285,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/internal/ini/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -293,7 +293,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -301,7 +301,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -309,7 +309,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/service/sso/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -317,7 +317,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/service/ssooidc/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -325,7 +325,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/aws-sdk-go-v2/service/sts/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -333,7 +333,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/aws/smithy-go/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -341,7 +341,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/bboreham/go-loser/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -349,7 +349,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/beorn7/perks/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -357,7 +357,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/cespare/xxhash/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -365,7 +365,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/davecgh/go-spew/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "ISC"
 
@@ -373,7 +373,7 @@ SPDX-License-Identifier = "ISC"
 path = [
   "vendor/github.com/dennwc/varint/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -381,7 +381,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/emicklei/go-restful/v3/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -389,7 +389,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/evanphx/json-patch/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -397,7 +397,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/evanphx/json-patch/v5/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -405,7 +405,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/felixge/httpsnoop/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -413,7 +413,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/fsnotify/fsnotify/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -421,7 +421,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/fxamacker/cbor/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -429,7 +429,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/gkampitakis/ciinfo/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -437,7 +437,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/gkampitakis/go-diff/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -445,7 +445,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/gkampitakis/go-snaps/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -453,7 +453,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/go-logr/stdr/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -461,7 +461,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/go-logr/zapr/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -469,7 +469,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/go-openapi/jsonpointer/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -477,7 +477,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/go-openapi/jsonreference/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -485,7 +485,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/go-openapi/swag/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -493,7 +493,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/go-task/slim-sprig/v3/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -501,7 +501,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/goccy/go-yaml/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -509,7 +509,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/gogo/protobuf/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -517,7 +517,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/golang-jwt/jwt/v5/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -525,7 +525,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/golang/snappy/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -533,7 +533,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/google/btree/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -541,7 +541,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/google/gnostic-models/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -549,7 +549,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/google/go-cmp/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -557,7 +557,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/google/gofuzz/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -565,7 +565,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/google/pprof/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -573,7 +573,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/google/s2a-go/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -581,7 +581,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/google/uuid/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -589,7 +589,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/googleapis/enterprise-certificate-proxy/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -597,7 +597,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/googleapis/gax-go/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -605,7 +605,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/grafana/regexp/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -613,7 +613,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/josharian/intern/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -621,7 +621,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/joshdk/go-junit/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -629,7 +629,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/jpillora/backoff/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -637,7 +637,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/json-iterator/go/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -645,7 +645,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/klauspost/compress/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -653,7 +653,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/kr/pretty/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -661,7 +661,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/kr/text/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -669,7 +669,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/kylelemons/godebug/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -677,7 +677,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/mailru/easyjson/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -685,7 +685,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/maruel/natural/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -693,7 +693,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/mfridman/tparse/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -701,7 +701,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/modern-go/concurrent/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -709,7 +709,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/modern-go/reflect2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -717,7 +717,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/munnerz/goautoneg/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -725,7 +725,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/mwitkow/go-conntrack/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -733,7 +733,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/oklog/ulid/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -741,7 +741,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/oklog/ulid/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -749,7 +749,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/pkg/browser/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-2-Clause"
 
@@ -757,7 +757,7 @@ SPDX-License-Identifier = "BSD-2-Clause"
 path = [
   "vendor/github.com/pkg/errors/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-2-Clause"
 
@@ -765,7 +765,7 @@ SPDX-License-Identifier = "BSD-2-Clause"
 path = [
   "vendor/github.com/pmezard/go-difflib/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -773,7 +773,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/prashantv/gostub/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -781,7 +781,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/prometheus/client_model/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -789,7 +789,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/prometheus/common/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -797,7 +797,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/prometheus/procfs/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -805,7 +805,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/prometheus/sigv4/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -813,7 +813,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/github.com/rogpeppe/go-internal/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -821,7 +821,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/sergi/go-diff/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -829,7 +829,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/spf13/pflag/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -837,7 +837,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/github.com/stretchr/objx/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -845,7 +845,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/stretchr/testify/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -853,7 +853,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/tidwall/gjson/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -861,7 +861,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/tidwall/match/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -869,7 +869,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/tidwall/pretty/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -877,7 +877,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/tidwall/sjson/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -885,7 +885,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/github.com/x448/float16/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -893,7 +893,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/go.opentelemetry.io/auto/sdk/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -901,7 +901,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -909,7 +909,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.opentelemetry.io/otel/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -917,7 +917,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.opentelemetry.io/otel/metric/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -925,7 +925,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.opentelemetry.io/otel/trace/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -933,7 +933,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.uber.org/atomic/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -941,7 +941,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/go.uber.org/goleak/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -949,7 +949,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/go.uber.org/multierr/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -957,7 +957,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/go.uber.org/zap/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -965,7 +965,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/go.yaml.in/yaml/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -973,7 +973,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/go.yaml.in/yaml/v3/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -981,7 +981,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/golang.org/x/crypto/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -989,7 +989,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/exp/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -997,7 +997,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/mod/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1005,7 +1005,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/net/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1013,7 +1013,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/oauth2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1021,7 +1021,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/sys/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1029,7 +1029,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/term/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1037,7 +1037,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/time/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1045,7 +1045,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/golang.org/x/tools/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1053,7 +1053,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/gomodules.xyz/jsonpatch/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1061,7 +1061,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/google.golang.org/api/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1069,7 +1069,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/google.golang.org/genproto/googleapis/rpc/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1077,7 +1077,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/google.golang.org/grpc/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1085,7 +1085,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/google.golang.org/protobuf/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1093,7 +1093,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/gopkg.in/check.v1/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-2-Clause"
 
@@ -1101,7 +1101,7 @@ SPDX-License-Identifier = "BSD-2-Clause"
 path = [
   "vendor/gopkg.in/evanphx/json-patch.v4/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1109,7 +1109,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/gopkg.in/inf.v0/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "BSD-3-Clause"
 
@@ -1117,7 +1117,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = [
   "vendor/gopkg.in/yaml.v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1125,7 +1125,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/gopkg.in/yaml.v3/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "MIT"
 
@@ -1133,7 +1133,7 @@ SPDX-License-Identifier = "MIT"
 path = [
   "vendor/k8s.io/apiextensions-apiserver/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1141,7 +1141,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/k8s.io/klog/v2/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1149,7 +1149,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/k8s.io/kube-openapi/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1157,7 +1157,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/k8s.io/utils/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1165,7 +1165,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/sigs.k8s.io/json/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1173,7 +1173,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/sigs.k8s.io/randfill/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"
 
@@ -1181,6 +1181,6 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
   "vendor/sigs.k8s.io/structured-merge-diff/v6/**",
 ]
-precedence = "aggregate"
+precedence = "override"
 SPDX-FileCopyrightText = "Other"
 SPDX-License-Identifier = "Apache-2.0"

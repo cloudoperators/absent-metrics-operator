@@ -103,13 +103,14 @@ GO_COVERPKGS := $(shell go list ./... | grep -E '/controllers')
 null :=
 space := $(null) $(null)
 comma := ,
+YEAR ?= $(shell date +%Y)
 
 check: FORCE static-check build/cover.html build-all
 	@printf "\e[1;32m>> All checks successful.\e[0m\n"
 
 generate: install-controller-gen
 	@printf "\e[1;36m>> controller-gen\e[0m\n"
-	@controller-gen crd rbac:roleName=absent-metrics-operator webhook paths="./..." output:crd:artifacts:config=crd
+	@controller-gen crd rbac:roleName=absent-metrics-operator webhook paths="./..." output:crd:artifacts:config=crd output:rbac:artifacts:config=config/rbac
 	@controller-gen object paths="./..."
 	@controller-gen applyconfiguration paths="./..."
 

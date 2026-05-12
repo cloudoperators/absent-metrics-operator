@@ -201,7 +201,8 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 		expr:   exprStr,
 		found:  map[string]struct{}{},
 	}
-	exprNode, err := parser.ParseExpr(exprStr)
+	p := parser.NewParser(parser.Options{})
+	exprNode, err := p.ParseExpr(exprStr)
 	if err == nil {
 		err = parser.Walk(mex, exprNode, nil)
 	}

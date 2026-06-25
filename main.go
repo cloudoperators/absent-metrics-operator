@@ -66,12 +66,15 @@ func main() {
 	flag.Var(&keepLabel, "keep-labels", "A comma-separated list of labels to retain from the original alert rule. "+
 		fmt.Sprintf("(default '%s,%s,%s')", controllers.LabelSupportGroup, controllers.LabelTier, controllers.LabelService))
 	flag.Var(&absentLabel, "absent-labels",
-		"A comma-separated list of label names. When set, the generated absent() expression will "+
-			"include equality label matchers for these labels using values extracted from the original "+
-			"metric selectors. Only labels with a consistent value across all VectorSelector occurrences "+
-			"of the metric in the expression are included; inconsistent or absent labels are silently "+
-			"omitted and the absent() call falls back to bare absent(metric_name). "+
-			"Example: --absent-labels=namespace,pod")
+		"A comma-separated list of label name patterns. When set, the generated absent() expression will "+
+			"include equality label matchers for every label whose name matches one of the patterns, using "+
+			"values extracted from the original metric selectors. Patterns may contain '*' wildcards: '*' "+
+			"matches every label, 'prefix_*' matches a prefix, '*_suffix' matches a suffix, '*middle*' matches "+
+			"any substring; a pattern with no '*' is an exact match. The internal '__name__' label is never "+
+			"matched. For each metric, the operator always emits the bare absent(metric_name) rule plus one "+
+			"additional rule per distinct label-value combination found across the VectorSelector(s); rules "+
+			"are not emitted for selectors that carry none of the matched labels. "+
+			"Example: --absent-labels=namespace,pod  or  --absent-labels='*'  or  --absent-labels='label_*'")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()

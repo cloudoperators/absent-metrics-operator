@@ -109,7 +109,7 @@ func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (par
 				if lm.Type != promlabels.MatchEqual {
 					continue
 				}
-				if mex.absentLabel[lm.Name] {
+				if mex.absentLabel.Matches(lm.Name) {
 					matchers[lm.Name] = lm.Value
 				}
 			}
@@ -313,35 +313,34 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 
 		duration := monitoringv1.Duration("10m")
 
-		// Always generate the original bare absence rule.
-		out = append(out, monitoringv1.Rule{
-			Alert:       makeAlertName(""),
-			Expr:        intstr.FromString(fmt.Sprintf("absent(%s)", m)),
-			For:         &duration,
-			Labels:      absenceRuleLabels,
-			Annotations: ann,
-		})
+		// emit appends a single absence rule for metric m using the given label
+		// combo. An empty combo produces the bare absent(m) rule; a non-empty
+		// combo produces a labeled rule with a unique alert-name suffix.
+		// buildAbsentExpr and comboSuffix both already treat an empty combo as
+		// "no matchers / no suffix", so the bare and labeled cases collapse
+		// into a single emission path.
+		emit := func(combo map[string]string) {
+			out = append(out, monitoringv1.Rule{
+				Alert:       makeAlertName(comboSuffix(combo)),
+				Expr:        intstr.FromString(buildAbsentExpr(m, combo)),
+				For:         &duration,
+				Labels:      absenceRuleLabels,
+				Annotations: ann,
+			})
+		}
 
-		// When absentLabel is set, also generate one additional labeled rule per
-		// distinct label-value combination found in the VectorSelectors.
+		// Always generate the original bare absence rule (combo == nil).
+		emit(nil)
+
+		// When absentLabel is set, also generate one additional labeled rule
+		// per distinct label-value combination found in the VectorSelectors.
+		// Empty combos are skipped because they would duplicate the bare rule.
 		if len(absentLabel) > 0 {
-			for _, combo := range distinctLabelCombos(occurrences, absentLabel) {
+			for _, combo := range distinctLabelCombos(occurrences) {
 				if len(combo) == 0 {
-					// No requested labels present in this occurrence — nothing to add
-					// beyond the bare rule already emitted above.
 					continue
 				}
-				labeledExpr := buildAbsentExpr(m, combo)
-				// Build a suffix from sorted label values so the alert name is unique
-				// and stable across runs.
-				suffix := comboSuffix(combo)
-				out = append(out, monitoringv1.Rule{
-					Alert:       makeAlertName(suffix),
-					Expr:        intstr.FromString(labeledExpr),
-					For:         &duration,
-					Labels:      absenceRuleLabels,
-					Annotations: ann,
-				})
+				emit(combo)
 			}
 		}
 	}
@@ -355,40 +354,36 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 }
 
 // distinctLabelCombos returns the deduplicated set of label-value maps from
-// occurrences, filtered to only the keys present in absentLabel.
-// Each returned map contains only equality-matched labels that were requested.
-// Maps that are identical after filtering are included only once.
-func distinctLabelCombos(occurrences []map[string]string, absentLabel AbsentLabel) []map[string]string {
+// occurrences. Each occurrence has already been filtered to the labels
+// requested by AbsentLabel at collection time (see metricNameExtractor.Visit),
+// so this function only needs to deduplicate identical combos.
+func distinctLabelCombos(occurrences []map[string]string) []map[string]string {
 	seen := make(map[string]struct{})
 	var result []map[string]string
-
 	for _, occ := range occurrences {
-		// Filter to requested keys only.
-		filtered := make(map[string]string)
-		for k, v := range occ {
-			if absentLabel[k] {
-				filtered[k] = v
-			}
-		}
-		// Deduplicate by canonical string key.
-		key := mapKey(filtered)
+		key := mapKey(occ)
 		if _, exists := seen[key]; !exists {
 			seen[key] = struct{}{}
-			result = append(result, filtered)
+			result = append(result, occ)
 		}
 	}
 	return result
 }
 
-// mapKey returns a canonical string representation of a label map for dedup purposes.
-func mapKey(m map[string]string) string {
+// sortedKeys returns the keys of m in ascending string order.
+func sortedKeys(m map[string]string) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+	return keys
+}
+
+// mapKey returns a canonical string representation of a label map for dedup purposes.
+func mapKey(m map[string]string) string {
 	var sb strings.Builder
-	for _, k := range keys {
+	for _, k := range sortedKeys(m) {
 		sb.WriteString(k)
 		sb.WriteByte('=')
 		sb.WriteString(m[k])
@@ -400,14 +395,10 @@ func mapKey(m map[string]string) string {
 // comboSuffix returns a stable string derived from label values, suitable for
 // appending to an alert name to make it unique.
 // Keys are sorted; values are joined with underscores.
+// An empty or nil combo returns "", which makeAlertName treats as "no suffix".
 func comboSuffix(combo map[string]string) string {
-	keys := make([]string, 0, len(combo))
-	for k := range combo {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var parts []string
-	for _, k := range keys {
+	parts := make([]string, 0, len(combo))
+	for _, k := range sortedKeys(combo) {
 		parts = append(parts, combo[k])
 	}
 	return strings.Join(parts, "_")
@@ -415,19 +406,16 @@ func comboSuffix(combo map[string]string) string {
 
 // buildAbsentExpr constructs the PromQL absent() expression for a metric with
 // the given label matchers map. Keys are sorted for deterministic output.
+// An empty or nil matchers map yields bare absent(metricName), so callers can
+// use the same emission path for the bare rule and labeled rules.
 // E.g.: buildAbsentExpr("my_metric", map[string]string{"namespace":"prod","pod":"api"})
 // returns: absent(my_metric{namespace="prod",pod="api"})
 func buildAbsentExpr(metricName string, matchers map[string]string) string {
 	if len(matchers) == 0 {
 		return fmt.Sprintf("absent(%s)", metricName)
 	}
-	keys := make([]string, 0, len(matchers))
-	for k := range matchers {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var parts []string
-	for _, k := range keys {
+	parts := make([]string, 0, len(matchers))
+	for _, k := range sortedKeys(matchers) {
 		parts = append(parts, fmt.Sprintf(`%s="%s"`, k, matchers[k]))
 	}
 	return fmt.Sprintf("absent(%s{%s})", metricName, strings.Join(parts, ","))

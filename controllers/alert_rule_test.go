@@ -408,5 +408,145 @@ var _ = Describe("Alert Rule", func() {
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
 		})
+
+		It(`wildcard "*" matches every non-__name__ label: collects all equality matchers`, func() {
+			rule := monitoringv1.Rule{
+				Alert:  "AllLabelsCollected",
+				Expr:   intstr.FromString(`my_metric{namespace="prod",pod="api",env="staging"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*": true})
+			Expect(err).ToNot(HaveOccurred())
+			// Suffix is built from sorted keys: env, namespace, pod → "Staging_Prod_Api".
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricStagingProdApi",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{env="staging",namespace="prod",pod="api"})`,
+				},
+			)
+		})
+
+		It(`prefix wildcard "label_*" matches only labels starting with the prefix`, func() {
+			rule := monitoringv1.Rule{
+				Alert:  "PrefixWildcard",
+				Expr:   intstr.FromString(`my_metric{label_a="x",label_b="y",other="z"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"label_*": true})
+			Expect(err).ToNot(HaveOccurred())
+			// label_a, label_b collected; "other" excluded.
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricXY",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{label_a="x",label_b="y"})`,
+				},
+			)
+		})
+
+		It(`suffix wildcard "*_id" matches only labels ending with the suffix`, func() {
+			rule := monitoringv1.Rule{
+				Alert:  "SuffixWildcard",
+				Expr:   intstr.FromString(`my_metric{request_id="r1",trace_id="t1",namespace="prod"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*_id": true})
+			Expect(err).ToNot(HaveOccurred())
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricR1T1",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{request_id="r1",trace_id="t1"})`,
+				},
+			)
+		})
+
+		It(`contains wildcard "*ace*" matches labels containing the substring`, func() {
+			rule := monitoringv1.Rule{
+				Alert:  "ContainsWildcard",
+				Expr:   intstr.FromString(`my_metric{namespace="prod",trace_id="t1",pod="api"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*ace*": true})
+			Expect(err).ToNot(HaveOccurred())
+			// namespace and trace_id both contain "ace"; pod does not.
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricProdT1",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace="prod",trace_id="t1"})`,
+				},
+			)
+		})
+
+		It(`wildcard never matches the internal "__name__" label`, func() {
+			// With "*" set, only real labels in the selector should be collected;
+			// __name__ must not appear in the generated absent() expression.
+			rule := monitoringv1.Rule{
+				Alert:  "InternalNameSkipped",
+				Expr:   intstr.FromString(`{__name__="my_metric",namespace="prod"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*": true})
+			Expect(err).ToNot(HaveOccurred())
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricProd",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace="prod"})`,
+				},
+			)
+		})
+
+		It(`mixed exact + wildcard patterns: union of matches is collected`, func() {
+			rule := monitoringv1.Rule{
+				Alert:  "MixedPatterns",
+				Expr:   intstr.FromString(`my_metric{namespace="prod",label_a="x",other="z"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{
+				"namespace": true,
+				"label_*":   true,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricXProd",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{label_a="x",namespace="prod"})`,
+				},
+			)
+		})
+
+		It(`pattern that matches no label in the selector: only bare rule`, func() {
+			rule := monitoringv1.Rule{
+				Alert:  "NoMatch",
+				Expr:   intstr.FromString(`my_metric{env="prod"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"label_*": true})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual).To(HaveLen(1))
+			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
+		})
 	})
 })

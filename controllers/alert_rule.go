@@ -168,11 +168,18 @@ func (e *ruleGroupParseError) Error() string {
 // The labels specified in the keepLabel map will be carried over to the corresponding
 // absence alerts unless templating (i.e. $labels) was used for these labels.
 //
-// When absentLabel is non-empty, equality label matchers for those label names are
-// extracted from each metric's VectorSelector(s) and included in the generated absent()
-// call — provided all occurrences of that metric in the expression agree on the same
-// value for that label. This makes absence alerts more precise and avoids false positives
-// across label dimensions.
+// When absentLabel is non-empty the feature generates two kinds of absence rules for
+// each metric:
+//
+//  1. The original bare absence rule (absent(metric_name)) — always present, identical to
+//     the pre-feature behaviour. This rule fires whenever the metric is completely absent
+//     from the scrape target, regardless of label values.
+//
+//  2. One additional labeled absence rule per distinct label-value combination found in
+//     the VectorSelector(s) of the expression. These narrower rules fire when the metric
+//     is absent for a specific label dimension (e.g. a particular namespace/pod pair).
+//     Each labeled rule has a unique alert name derived from the label values, so they
+//     coexist in the same rule group without collision.
 //
 // The rule group names for the absence alerts have the format: promRuleName/originalGroupName.
 func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleName string, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.RuleGroup, error) {
@@ -211,6 +218,11 @@ var nonAlphaNumericRx = regexp.MustCompile(`[^a-zA-Z0-9]`)
 // Since an alert expression can reference multiple time series therefore a slice of
 // []monitoringv1.Rule is returned as multiple absence alert rules would be generated —
 // one for each time series.
+//
+// When absentLabel is non-empty, each metric yields:
+//   - One bare absence rule (absent(metric_name)) — identical to pre-feature behaviour.
+//   - One additional labeled absence rule per distinct label-value combination found in
+//     the VectorSelector(s) of the expression. Duplicate combos are deduplicated.
 func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.Rule, error) {
 	// Do not parse recording rules.
 	if in.Record != "" {
@@ -259,41 +271,37 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		}
 	}
 
-	out := make([]monitoringv1.Rule, 0, len(mex.found))
+	var out []monitoringv1.Rule
 	for m, occurrences := range mex.found {
-		// Generate an alert name from metric name. Example:
-		//   network:tis_a_metric:rate5m -> Absent(Support Group|Tier)ServiceNetworkTisAMetricRate5m
-		supportGroup := absenceRuleLabels[LabelSupportGroup]
-		if supportGroup == "" {
-			supportGroup = absenceRuleLabels[LabelTier] // use tier in case there is no support group
-		}
-		var words []string
-		for _, v := range []string{"absent", supportGroup, absenceRuleLabels[LabelService], m} {
-			s := nonAlphaNumericRx.Split(v, -1) // remove non-alphanumeric characters
-			words = append(words, s...)
-		}
-		// Avoid name stuttering
-		//
-		// TODO: fix edge case when support_group or service label value has non-numeric
-		// character and splitting it will still result in name stuttering because
-		// matching with previous word (as we do below) does not work as the original word
-		// has been split into multiple words.
-		// Example: support_group = "containers", service = "go-pmtud",
-		// and metric = "go_pmtud_sent_error_peer_total" will result in
-		// "AbsentContainersGoPmtudGoPmtudSentErrorPeerTotal" as the alert name.
-		var alertName strings.Builder
-		var prevW string
-		for _, v := range words {
-			w := strings.ToLower(v) // convert to lowercase for comparison
-			if w != prevW {
-				fmt.Fprint(&alertName, cases.Title(language.English).String(w))
-				prevW = w
+		// makeAlertName constructs an alert name from the metric name plus an
+		// optional suffix (used to distinguish labeled rules from the bare rule
+		// and from each other).
+		makeAlertName := func(suffix string) string {
+			supportGroup := absenceRuleLabels[LabelSupportGroup]
+			if supportGroup == "" {
+				supportGroup = absenceRuleLabels[LabelTier]
 			}
+			var words []string
+			for _, v := range []string{"absent", supportGroup, absenceRuleLabels[LabelService], m} {
+				s := nonAlphaNumericRx.Split(v, -1)
+				words = append(words, s...)
+			}
+			if suffix != "" {
+				words = append(words, nonAlphaNumericRx.Split(suffix, -1)...)
+			}
+			// Avoid name stuttering
+			var alertName strings.Builder
+			var prevW string
+			for _, v := range words {
+				w := strings.ToLower(v)
+				if w != prevW {
+					fmt.Fprint(&alertName, cases.Title(language.English).String(w))
+					prevW = w
+				}
+			}
+			return alertName.String()
 		}
 
-		// TODO: remove the link from description and add a 'playbook' label,
-		// when our upstream solution gets the ability to process hardcoded
-		// links in the 'playbook' label.
 		ann := map[string]string{
 			"summary": "missing " + m,
 			"description": fmt.Sprintf(
@@ -304,13 +312,38 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		}
 
 		duration := monitoringv1.Duration("10m")
+
+		// Always generate the original bare absence rule.
 		out = append(out, monitoringv1.Rule{
-			Alert:       alertName.String(),
-			Expr:        intstr.FromString(buildAbsentExpr(m, occurrences, absentLabel)),
+			Alert:       makeAlertName(""),
+			Expr:        intstr.FromString(fmt.Sprintf("absent(%s)", m)),
 			For:         &duration,
 			Labels:      absenceRuleLabels,
 			Annotations: ann,
 		})
+
+		// When absentLabel is set, also generate one additional labeled rule per
+		// distinct label-value combination found in the VectorSelectors.
+		if len(absentLabel) > 0 {
+			for _, combo := range distinctLabelCombos(occurrences, absentLabel) {
+				if len(combo) == 0 {
+					// No requested labels present in this occurrence — nothing to add
+					// beyond the bare rule already emitted above.
+					continue
+				}
+				labeledExpr := buildAbsentExpr(m, combo)
+				// Build a suffix from sorted label values so the alert name is unique
+				// and stable across runs.
+				suffix := comboSuffix(combo)
+				out = append(out, monitoringv1.Rule{
+					Alert:       makeAlertName(suffix),
+					Expr:        intstr.FromString(labeledExpr),
+					For:         &duration,
+					Labels:      absenceRuleLabels,
+					Annotations: ann,
+				})
+			}
+		}
 	}
 
 	// Sort alert rules for consistent test results.
@@ -321,56 +354,81 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 	return out, nil
 }
 
-// buildAbsentExpr constructs the PromQL absent() expression for a metric.
-//
-// When absentLabel is non-empty, equality label matchers are extracted from the
-// per-occurrence maps and included in the absent() selector — but only for labels
-// where every VectorSelector occurrence of the metric in the expression carries the
-// same equality matcher value. Labels with inconsistent or absent values across
-// occurrences are silently omitted.
-//
-// If no matchers qualify, or absentLabel is empty/nil, a bare absent(metricName)
-// expression is returned (the default, pre-feature behaviour).
-func buildAbsentExpr(metricName string, occurrences []map[string]string, absentLabel AbsentLabel) string {
-	if len(absentLabel) == 0 {
-		return fmt.Sprintf("absent(%s)", metricName)
-	}
+// distinctLabelCombos returns the deduplicated set of label-value maps from
+// occurrences, filtered to only the keys present in absentLabel.
+// Each returned map contains only equality-matched labels that were requested.
+// Maps that are identical after filtering are included only once.
+func distinctLabelCombos(occurrences []map[string]string, absentLabel AbsentLabel) []map[string]string {
+	seen := make(map[string]struct{})
+	var result []map[string]string
 
-	// Iterate over requested label names in a deterministic order.
-	requestedLabels := make([]string, 0, len(absentLabel))
-	for k := range absentLabel {
-		requestedLabels = append(requestedLabels, k)
-	}
-	sort.Strings(requestedLabels)
-
-	var matchers []string
-	for _, labelName := range requestedLabels {
-		var consistentValue *string
-		consistent := true
-		for _, occ := range occurrences {
-			val, present := occ[labelName]
-			if !present {
-				// At least one occurrence has no equality matcher for this label;
-				// omit it from the absent() selector.
-				consistent = false
-				break
-			}
-			if consistentValue == nil {
-				v := val
-				consistentValue = &v
-			} else if *consistentValue != val {
-				// Occurrences disagree on the value; omit this label.
-				consistent = false
-				break
+	for _, occ := range occurrences {
+		// Filter to requested keys only.
+		filtered := make(map[string]string)
+		for k, v := range occ {
+			if absentLabel[k] {
+				filtered[k] = v
 			}
 		}
-		if consistent && consistentValue != nil {
-			matchers = append(matchers, fmt.Sprintf(`%s="%s"`, labelName, *consistentValue))
+		// Deduplicate by canonical string key.
+		key := mapKey(filtered)
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			result = append(result, filtered)
 		}
 	}
+	return result
+}
 
+// mapKey returns a canonical string representation of a label map for dedup purposes.
+func mapKey(m map[string]string) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var sb strings.Builder
+	for _, k := range keys {
+		sb.WriteString(k)
+		sb.WriteByte('=')
+		sb.WriteString(m[k])
+		sb.WriteByte(',')
+	}
+	return sb.String()
+}
+
+// comboSuffix returns a stable string derived from label values, suitable for
+// appending to an alert name to make it unique.
+// Keys are sorted; values are joined with underscores.
+func comboSuffix(combo map[string]string) string {
+	keys := make([]string, 0, len(combo))
+	for k := range combo {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, combo[k])
+	}
+	return strings.Join(parts, "_")
+}
+
+// buildAbsentExpr constructs the PromQL absent() expression for a metric with
+// the given label matchers map. Keys are sorted for deterministic output.
+// E.g.: buildAbsentExpr("my_metric", map[string]string{"namespace":"prod","pod":"api"})
+// returns: absent(my_metric{namespace="prod",pod="api"})
+func buildAbsentExpr(metricName string, matchers map[string]string) string {
 	if len(matchers) == 0 {
 		return fmt.Sprintf("absent(%s)", metricName)
 	}
-	return fmt.Sprintf("absent(%s{%s})", metricName, strings.Join(matchers, ","))
+	keys := make([]string, 0, len(matchers))
+	for k := range matchers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf(`%s="%s"`, k, matchers[k]))
+	}
+	return fmt.Sprintf("absent(%s{%s})", metricName, strings.Join(parts, ","))
 }

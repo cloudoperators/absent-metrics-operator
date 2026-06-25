@@ -234,146 +234,176 @@ var _ = Describe("Alert Rule", func() {
 			"namespace": true,
 			"pod":       true,
 		}
+		baseLabels := map[string]string{
+			"context":       "absent-metrics",
+			"severity":      "info",
+			"support_group": "containers",
+			"service":       "k8s",
+		}
+		ruleLabels := map[string]string{
+			"support_group": "containers",
+			"service":       "k8s",
+		}
 
-		DescribeTable("--absent-labels behaviour",
-			func(in monitoringv1.Rule, expectedExpr string) {
-				actual, err := parseRule(logger, in, keepLabel, absentLabel)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(actual).To(HaveLen(1))
-				Expect(actual[0].Expr.String()).To(Equal(expectedExpr))
-			},
+		// checkRules is a helper that verifies alert names and expressions in order.
+		checkRules := func(actual []monitoringv1.Rule, wantAlerts []string, wantExprs []string) {
+			GinkgoHelper()
+			Expect(actual).To(HaveLen(len(wantAlerts)))
+			for i := range wantAlerts {
+				Expect(actual[i].Alert).To(Equal(wantAlerts[i]))
+				Expect(actual[i].Expr.String()).To(Equal(wantExprs[i]))
+				Expect(actual[i].Labels).To(Equal(baseLabels))
+			}
+		}
 
-			Entry("single occurrence: includes requested labels present in selector",
-				monitoringv1.Rule{
-					Alert: "SomePodCrashing",
-					Expr:  intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "k8s",
-					},
-				},
-				// namespace and pod are both present with equality matchers → included
-				`absent(kube_pod_status_phase{namespace="production",pod="api-server"})`,
-			),
-
-			Entry("requested label absent from selector → falls back to bare absent()",
-				monitoringv1.Rule{
-					Alert: "SomeMetricMissing",
-					Expr:  intstr.FromString(`my_metric{env="prod"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// neither namespace nor pod appear → bare absent()
-				`absent(my_metric)`,
-			),
-
-			Entry("only one of the requested labels is present → includes only that one",
-				monitoringv1.Rule{
-					Alert: "SomeNamespaceMetricMissing",
-					Expr:  intstr.FromString(`my_metric{namespace="staging"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// namespace present, pod absent → only namespace included
-				`absent(my_metric{namespace="staging"})`,
-			),
-
-			Entry("metric appears multiple times with same label values → consistent → includes label",
-				monitoringv1.Rule{
-					Alert: "MetricUsedTwiceSameLabels",
-					Expr:  intstr.FromString(`my_metric{namespace="prod"} > 70 and predict_linear(my_metric{namespace="prod"}[1h], 3600) > 100`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// both occurrences have namespace="prod" → consistent → included
-				`absent(my_metric{namespace="prod"})`,
-			),
-
-			Entry("metric appears multiple times with differing label values → inconsistent → falls back to bare absent()",
-				monitoringv1.Rule{
-					Alert: "MetricUsedTwiceDifferentLabels",
-					Expr:  intstr.FromString(`my_metric{namespace="prod"} > 0 or my_metric{namespace="staging"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// namespace="prod" vs namespace="staging" → inconsistent → bare absent()
-				`absent(my_metric)`,
-			),
-
-			Entry("metric appears twice: one occurrence missing the label → inconsistent → bare absent()",
-				monitoringv1.Rule{
-					Alert: "MetricOneWithOneMissing",
-					Expr:  intstr.FromString(`my_metric{namespace="prod"} > 0 or my_metric{env="prod"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// second occurrence has no namespace matcher → inconsistent → bare absent()
-				`absent(my_metric)`,
-			),
-
-			Entry("non-equality matcher (regex) for a requested label → not collected → bare absent()",
-				monitoringv1.Rule{
-					Alert: "RegexLabelMatcher",
-					Expr:  intstr.FromString(`my_metric{namespace=~"prod.*"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// namespace uses regex → not an equality matcher → not collected → bare absent()
-				`absent(my_metric)`,
-			),
-
-			Entry("nil absentLabel behaves identically to existing behaviour",
-				monitoringv1.Rule{
-					Alert: "NilAbsentLabel",
-					Expr:  intstr.FromString(`my_metric{namespace="prod"} > 0`),
-					Labels: map[string]string{
-						"support_group": "containers",
-						"service":       "myapp",
-					},
-				},
-				// nil passed explicitly by calling with absentLabel=nil below
-				// (this entry uses the outer absentLabel but we test bare absent() separately below)
-				`absent(my_metric{namespace="prod"})`,
-			),
-		)
-
-		It("generates bare absent() when absentLabel is nil, even if selector has matching labels", func() {
+		It("nil absentLabel: generates only bare absent() rule — identical to pre-feature behaviour", func() {
 			rule := monitoringv1.Rule{
-				Alert: "NilAbsentLabel",
-				Expr:  intstr.FromString(`my_metric{namespace="prod"} > 0`),
-				Labels: map[string]string{
-					"support_group": "containers",
-					"service":       "myapp",
-				},
+				Alert:  "SomePodCrashing",
+				Expr:   intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
+				Labels: ruleLabels,
 			}
 			actual, err := parseRule(logger, rule, keepLabel, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual).To(HaveLen(1))
+			Expect(actual[0].Expr.String()).To(Equal(`absent(kube_pod_status_phase)`))
+		})
+
+		It("empty absentLabel: generates only bare absent() rule — identical to pre-feature behaviour", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "SomePodCrashing",
+				Expr:   intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual).To(HaveLen(1))
+			Expect(actual[0].Expr.String()).To(Equal(`absent(kube_pod_status_phase)`))
+		})
+
+		It("single occurrence with both requested labels: bare rule + one labeled rule", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "SomePodCrashing",
+				Expr:   intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			Expect(err).ToNot(HaveOccurred())
+			checkRules(actual,
+				// sorted alphabetically; suffix is key-sorted: namespace=production, pod=api-server
+				[]string{
+					"AbsentContainersK8sKubePodStatusPhase",
+					"AbsentContainersK8sKubePodStatusPhaseProductionApiServer",
+				},
+				[]string{
+					`absent(kube_pod_status_phase)`,
+					`absent(kube_pod_status_phase{namespace="production",pod="api-server"})`,
+				},
+			)
+		})
+
+		It("single occurrence with only one of the requested labels: bare rule + one labeled rule", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "SomeNamespaceMissing",
+				Expr:   intstr.FromString(`my_metric{namespace="staging"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			Expect(err).ToNot(HaveOccurred())
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricStaging",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace="staging"})`,
+				},
+			)
+		})
+
+		It("single occurrence with no requested labels in selector: only bare rule", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "SomeMetricMissing",
+				Expr:   intstr.FromString(`my_metric{env="prod"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
 		})
 
-		It("generates bare absent() when absentLabel is empty map, even if selector has matching labels", func() {
+		It("metric appears twice with same labels: bare rule + one labeled rule (deduped)", func() {
 			rule := monitoringv1.Rule{
-				Alert: "EmptyAbsentLabel",
-				Expr:  intstr.FromString(`my_metric{namespace="prod"} > 0`),
-				Labels: map[string]string{
-					"support_group": "containers",
-					"service":       "myapp",
-				},
+				Alert:  "MetricUsedTwiceSameLabels",
+				Expr:   intstr.FromString(`my_metric{namespace="prod"} > 70 and predict_linear(my_metric{namespace="prod"}[1h], 3600) > 100`),
+				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{})
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			Expect(err).ToNot(HaveOccurred())
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricProd",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace="prod"})`,
+				},
+			)
+		})
+
+		It("metric appears twice with different label values: bare rule + two labeled rules", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "MetricTwoDifferentNamespaces",
+				Expr:   intstr.FromString(`my_metric{namespace="prod"} > 0 or my_metric{namespace="staging"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			Expect(err).ToNot(HaveOccurred())
+			// bare + prod + staging — sorted alphabetically by alert name
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricProd",
+					"AbsentContainersK8sMyMetricStaging",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace="prod"})`,
+					`absent(my_metric{namespace="staging"})`,
+				},
+			)
+		})
+
+		It("metric appears twice: one occurrence has no requested label → one combo is empty → only bare + non-empty combo", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "MetricOneWithOneMissingLabel",
+				Expr:   intstr.FromString(`my_metric{namespace="prod"} > 0 or my_metric{env="other"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			Expect(err).ToNot(HaveOccurred())
+			// bare rule + one labeled rule for the occurrence that had namespace
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricProd",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace="prod"})`,
+				},
+			)
+		})
+
+		It("non-equality (regex) matcher for a requested label: label not collected → only bare rule", func() {
+			rule := monitoringv1.Rule{
+				Alert:  "RegexLabelMatcher",
+				Expr:   intstr.FromString(`my_metric{namespace=~"prod.*"} > 0`),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))

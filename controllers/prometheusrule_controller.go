@@ -40,6 +40,11 @@ type PrometheusRuleReconciler struct {
 	// KeepLabel is a map of labels that will be retained from the original alert rule and
 	// passed on to its corresponding absence alert rule.
 	KeepLabel KeepLabel
+	// AbsentLabel, when non-empty, causes the generated absent() expression to include
+	// equality label matchers for the named labels, using values extracted from the
+	// original metric selectors. Only labels with a consistent value across all
+	// VectorSelector occurrences of the metric are included.
+	AbsentLabel AbsentLabel
 }
 
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;create;update;patch;delete

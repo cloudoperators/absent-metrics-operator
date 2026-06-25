@@ -310,7 +310,7 @@ func (r *PrometheusRuleReconciler) updateAbsenceAlertRules(ctx context.Context, 
 	unmodifiedAbsencePromRule := absencePromRule.DeepCopy()
 
 	// Step 2: parse RuleGroups and generate corresponding absence alert rules.
-	absenceRuleGroups, err := ParseRuleGroups(log, promRule.Spec.Groups, promRuleName, r.KeepLabel)
+	absenceRuleGroups, err := ParseRuleGroups(log, promRule.Spec.Groups, promRuleName, r.KeepLabel, r.AbsentLabel)
 	if err != nil {
 		return err
 	}

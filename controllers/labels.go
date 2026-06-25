@@ -24,3 +24,9 @@ const (
 
 // KeepLabel specifies which labels to keep on an absence alert rule.
 type KeepLabel map[string]bool
+
+// AbsentLabel specifies which label names, if present in a metric's selector
+// expression, should be included in the generated absent() call.
+// When nil (or empty), the feature is disabled and absent() is always generated
+// without any label matchers (the existing behaviour).
+type AbsentLabel map[string]bool

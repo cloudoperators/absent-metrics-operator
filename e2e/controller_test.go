@@ -108,7 +108,7 @@ var _ = Describe("Controller", Ordered, func() {
 				Expect(k8sClient.Update(ctx, &pr)).To(Succeed())
 
 				// Generate the corresponding absence alert rules.
-				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel))
+				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel, nil))
 
 				// Get the updated AbsencePromRule from the server and check if it has the
 				// corresponding absence alert rule.
@@ -138,7 +138,7 @@ var _ = Describe("Controller", Ordered, func() {
 				Expect(k8sClient.Update(ctx, &pr)).To(Succeed())
 
 				// Generate the corresponding absence alert rules.
-				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel))
+				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel, nil))
 
 				// Get the updated AbsencePromRule from the server and check if the
 				// corresponding absence alert rule has been updated.
@@ -231,7 +231,7 @@ var _ = Describe("Controller", Ordered, func() {
 				Expect(k8sClient.Update(ctx, &pr)).To(Succeed())
 
 				// Generate the corresponding absence alert rules.
-				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel))
+				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel, nil))
 
 				// Check that the corresponding absence alert rule was removed.
 				waitForControllerToProcess()

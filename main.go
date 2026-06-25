@@ -49,6 +49,7 @@ func main() {
 		probeAddr            string
 		enableLeaderElection bool
 		keepLabel            labelsMap
+		absentLabel          absentLabelsMap
 		prometheusRuleName   string
 	)
 	bininfo.HandleVersionArgument()
@@ -64,6 +65,13 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Var(&keepLabel, "keep-labels", "A comma-separated list of labels to retain from the original alert rule. "+
 		fmt.Sprintf("(default '%s,%s,%s')", controllers.LabelSupportGroup, controllers.LabelTier, controllers.LabelService))
+	flag.Var(&absentLabel, "absent-labels",
+		"A comma-separated list of label names. When set, the generated absent() expression will "+
+			"include equality label matchers for these labels using values extracted from the original "+
+			"metric selectors. Only labels with a consistent value across all VectorSelector occurrences "+
+			"of the metric in the expression are included; inconsistent or absent labels are silently "+
+			"omitted and the absent() call falls back to bare absent(metric_name). "+
+			"Example: --absent-labels=namespace,pod")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -110,6 +118,7 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		Log:                ctrl.Log.WithName("controller").WithName("prometheusrule"),
 		KeepLabel:          controllers.KeepLabel(keepLabel),
+		AbsentLabel:        controllers.AbsentLabel(absentLabel),
 		PrometheusRuleName: prometheusRuleNameGen,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PrometheusRule")
@@ -157,5 +166,30 @@ func (lm *labelsMap) Set(in string) error {
 	}
 
 	*lm = labels
+	return nil
+}
+
+// absentLabelsMap type is a wrapper around controllers.AbsentLabel. It is used for the
+// `--absent-labels` flag to convert a comma-separated string of label names into a map.
+type absentLabelsMap controllers.AbsentLabel
+
+// String implements the flag.Value interface.
+func (alm absentLabelsMap) String() string {
+	list := make([]string, 0, len(alm))
+	for k := range alm {
+		list = append(list, k)
+	}
+	return strings.Join(list, ",")
+}
+
+// Set implements the flag.Value interface.
+func (alm *absentLabelsMap) Set(in string) error {
+	labels := make(absentLabelsMap)
+	for v := range strings.SplitSeq(in, ",") {
+		if name := strings.TrimSpace(v); name != "" {
+			labels[name] = true
+		}
+	}
+	*alm = labels
 	return nil
 }

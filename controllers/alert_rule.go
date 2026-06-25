@@ -21,18 +21,21 @@ import (
 )
 
 // metricNameExtractor is used to walk through a PromQL expression and extract
-// time series (i.e. metric) names.
+// time series (i.e. metric) names along with their label matchers.
 type metricNameExtractor struct {
 	logger logr.Logger
 
 	// expr is the PromQL expression that the metricNameExtractor is working on.
 	expr string
 
-	// This map contains metric names that were extracted from a promql.Node.
-	// We only use the keys of the map and never depend on the presence of an
-	// element in the map nor its value therefore we use an empty struct instead
-	// of a bool.
-	found map[string]struct{}
+	// absentLabel is the set of label names whose values should be extracted
+	// from metric selectors and included in the generated absent() call.
+	absentLabel AbsentLabel
+
+	// found maps each metric name to the list of label-value maps seen across
+	// all VectorSelector occurrences of that metric in the expression. Each
+	// element of the slice corresponds to one VectorSelector node.
+	found map[string][]map[string]string
 }
 
 var reCache sync.Map
@@ -94,7 +97,24 @@ func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (par
 		// Skip "up" metric, it is automatically injected by Prometheus to describe
 		// Prometheus scraping jobs.
 	default:
-		mex.found[name] = struct{}{}
+		// Collect equality label matchers for any requested absent labels.
+		// Only MatchEqual matchers are considered because only they produce a
+		// single deterministic value suitable for use in an absent() selector.
+		matchers := make(map[string]string)
+		if len(mex.absentLabel) > 0 {
+			for _, lm := range vs.LabelMatchers {
+				if lm.Name == "__name__" {
+					continue
+				}
+				if lm.Type != promlabels.MatchEqual {
+					continue
+				}
+				if mex.absentLabel[lm.Name] {
+					matchers[lm.Name] = lm.Value
+				}
+			}
+		}
+		mex.found[name] = append(mex.found[name], matchers)
 	}
 	return mex, nil
 }
@@ -148,13 +168,19 @@ func (e *ruleGroupParseError) Error() string {
 // The labels specified in the keepLabel map will be carried over to the corresponding
 // absence alerts unless templating (i.e. $labels) was used for these labels.
 //
+// When absentLabel is non-empty, equality label matchers for those label names are
+// extracted from each metric's VectorSelector(s) and included in the generated absent()
+// call — provided all occurrences of that metric in the expression agree on the same
+// value for that label. This makes absence alerts more precise and avoids false positives
+// across label dimensions.
+//
 // The rule group names for the absence alerts have the format: promRuleName/originalGroupName.
-func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleName string, keepLabel KeepLabel) ([]monitoringv1.RuleGroup, error) {
+func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleName string, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.RuleGroup, error) {
 	out := make([]monitoringv1.RuleGroup, 0, len(in))
 	for _, g := range in {
 		var absenceAlertRules []monitoringv1.Rule
 		for _, r := range g.Rules {
-			rules, err := parseRule(logger, r, keepLabel)
+			rules, err := parseRule(logger, r, keepLabel, absentLabel)
 			if err != nil {
 				return nil, &ruleGroupParseError{cause: err}
 			}
@@ -185,7 +211,7 @@ var nonAlphaNumericRx = regexp.MustCompile(`[^a-zA-Z0-9]`)
 // Since an alert expression can reference multiple time series therefore a slice of
 // []monitoringv1.Rule is returned as multiple absence alert rules would be generated —
 // one for each time series.
-func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([]monitoringv1.Rule, error) {
+func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.Rule, error) {
 	// Do not parse recording rules.
 	if in.Record != "" {
 		return nil, nil
@@ -197,9 +223,10 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 
 	exprStr := in.Expr.String()
 	mex := &metricNameExtractor{
-		logger: logger,
-		expr:   exprStr,
-		found:  map[string]struct{}{},
+		logger:      logger,
+		expr:        exprStr,
+		absentLabel: absentLabel,
+		found:       map[string][]map[string]string{},
 	}
 	p := parser.NewParser(parser.Options{})
 	exprNode, err := p.ParseExpr(exprStr)
@@ -233,7 +260,7 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 	}
 
 	out := make([]monitoringv1.Rule, 0, len(mex.found))
-	for m := range mex.found {
+	for m, occurrences := range mex.found {
 		// Generate an alert name from metric name. Example:
 		//   network:tis_a_metric:rate5m -> Absent(Support Group|Tier)ServiceNetworkTisAMetricRate5m
 		supportGroup := absenceRuleLabels[LabelSupportGroup]
@@ -279,7 +306,7 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 		duration := monitoringv1.Duration("10m")
 		out = append(out, monitoringv1.Rule{
 			Alert:       alertName.String(),
-			Expr:        intstr.FromString(fmt.Sprintf("absent(%s)", m)),
+			Expr:        intstr.FromString(buildAbsentExpr(m, occurrences, absentLabel)),
 			For:         &duration,
 			Labels:      absenceRuleLabels,
 			Annotations: ann,
@@ -292,4 +319,58 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 	})
 
 	return out, nil
+}
+
+// buildAbsentExpr constructs the PromQL absent() expression for a metric.
+//
+// When absentLabel is non-empty, equality label matchers are extracted from the
+// per-occurrence maps and included in the absent() selector — but only for labels
+// where every VectorSelector occurrence of the metric in the expression carries the
+// same equality matcher value. Labels with inconsistent or absent values across
+// occurrences are silently omitted.
+//
+// If no matchers qualify, or absentLabel is empty/nil, a bare absent(metricName)
+// expression is returned (the default, pre-feature behaviour).
+func buildAbsentExpr(metricName string, occurrences []map[string]string, absentLabel AbsentLabel) string {
+	if len(absentLabel) == 0 {
+		return fmt.Sprintf("absent(%s)", metricName)
+	}
+
+	// Iterate over requested label names in a deterministic order.
+	requestedLabels := make([]string, 0, len(absentLabel))
+	for k := range absentLabel {
+		requestedLabels = append(requestedLabels, k)
+	}
+	sort.Strings(requestedLabels)
+
+	var matchers []string
+	for _, labelName := range requestedLabels {
+		var consistentValue *string
+		consistent := true
+		for _, occ := range occurrences {
+			val, present := occ[labelName]
+			if !present {
+				// At least one occurrence has no equality matcher for this label;
+				// omit it from the absent() selector.
+				consistent = false
+				break
+			}
+			if consistentValue == nil {
+				v := val
+				consistentValue = &v
+			} else if *consistentValue != val {
+				// Occurrences disagree on the value; omit this label.
+				consistent = false
+				break
+			}
+		}
+		if consistent && consistentValue != nil {
+			matchers = append(matchers, fmt.Sprintf(`%s="%s"`, labelName, *consistentValue))
+		}
+	}
+
+	if len(matchers) == 0 {
+		return fmt.Sprintf("absent(%s)", metricName)
+	}
+	return fmt.Sprintf("absent(%s{%s})", metricName, strings.Join(matchers, ","))
 }

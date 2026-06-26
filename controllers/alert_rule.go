@@ -252,27 +252,40 @@ func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleNa
 	return bare, labeled, nil
 }
 
-// appendUniqueByAlert appends rules from src to dst, skipping any whose Alert
-// name is already in seen. seen is updated in place. This is the deduplication
-// hook used by ParseRuleGroups to guarantee that each output rule group (and,
-// transitively, each AbsencePrometheusRule) contains every absent(...)
-// expression at most once.
+// appendUniqueByAlert appends rules from src to dst, skipping any whose
+// (Alert, Expr) pair is already in seen. seen is updated in place. This is
+// the deduplication hook used by ParseRuleGroups to guarantee that each
+// output rule group (and, transitively, each AbsencePrometheusRule)
+// contains every absent(...) expression at most once.
+//
+// Dedup keys on both Alert and Expr because labeled rules now share alert
+// names across distinct PromQL expressions (the prefix word is "AbsentLabels"
+// with no per-combo suffix), so collapsing on Alert alone would drop legitimate
+// distinct rules. The bare-rule dedup behaviour is unchanged: bare rules
+// already had unique alert names per metric.
 func appendUniqueByAlert(dst, src []monitoringv1.Rule, seen map[string]bool) []monitoringv1.Rule {
 	for _, r := range src {
-		if seen[r.Alert] {
+		key := r.Alert + "\x00" + r.Expr.String()
+		if seen[key] {
 			continue
 		}
-		seen[r.Alert] = true
+		seen[key] = true
 		dst = append(dst, r)
 	}
 	return dst
 }
 
-// sortByAlert sorts rules by Alert name in place. Stable to keep the
-// per-metric emission order from parseRule visible in tests.
+// sortByAlert sorts rules by Alert name, then by expression string as a
+// stable tiebreak. The tiebreak matters now that all labeled rules for a
+// given metric share the same alert name (Absent → AbsentLabels prefix swap,
+// no per-combo suffix) — they're disambiguated entirely by their PromQL
+// expression, so ordering must be deterministic on that.
 func sortByAlert(rules []monitoringv1.Rule) {
 	sort.SliceStable(rules, func(i, j int) bool {
-		return rules[i].Alert < rules[j].Alert
+		if rules[i].Alert != rules[j].Alert {
+			return rules[i].Alert < rules[j].Alert
+		}
+		return rules[i].Expr.String() < rules[j].Expr.String()
 	})
 }
 
@@ -342,21 +355,31 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 	}
 
 	for m, occurrences := range mex.found {
-		// makeAlertName constructs an alert name from the metric name plus an
-		// optional suffix (used to distinguish labeled rules from the bare rule
-		// and from each other).
-		makeAlertName := func(suffix string) string {
+		// makeAlertName constructs an alert name from the metric name. When
+		// labeled is true the prefix word is "AbsentLabels" instead of
+		// "Absent", so the labeled rule is named after the bare-rule
+		// pattern (Absent<support_group><service><metric>) without any
+		// per-combo suffix. Multiple labeled rules for the same metric
+		// share the same alert name; Prometheus distinguishes them by
+		// their labelset / expression.
+		makeAlertName := func(labeled bool) string {
 			supportGroup := absenceRuleLabels[LabelSupportGroup]
 			if supportGroup == "" {
 				supportGroup = absenceRuleLabels[LabelTier]
 			}
+			prefix := "absent"
+			if labeled {
+				// Two underscore-separated tokens so the alphanumeric
+				// splitter produces ["absent", "labels"], each then
+				// independently title-cased to "Absent" / "Labels".
+				// Otherwise "absentLabels" stays a single word and ends
+				// up rendered as "Absentlabels".
+				prefix = "absent_labels"
+			}
 			var words []string
-			for _, v := range []string{"absent", supportGroup, absenceRuleLabels[LabelService], m} {
+			for _, v := range []string{prefix, supportGroup, absenceRuleLabels[LabelService], m} {
 				s := nonAlphaNumericRx.Split(v, -1)
 				words = append(words, s...)
-			}
-			if suffix != "" {
-				words = append(words, nonAlphaNumericRx.Split(suffix, -1)...)
 			}
 			// Avoid name stuttering
 			var alertName strings.Builder
@@ -382,15 +405,15 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 
 		duration := monitoringv1.Duration("10m")
 
-		// emit appends a single absence rule for metric m using the given label
-		// combo to the target slice. An empty combo produces the bare absent(m)
-		// rule; a non-empty combo produces a labeled rule with a unique
-		// alert-name suffix. buildAbsentExpr and comboSuffix both already
-		// treat an empty combo as "no matchers / no suffix", so the bare and
-		// labeled cases share the same construction path.
+		// emit appends a single absence rule for metric m using the given
+		// matcher combo to the target slice. An empty combo produces the
+		// bare absent(m) rule and uses the Absent… name; a non-empty combo
+		// produces a labeled rule and uses the AbsentLabels… name.
+		// buildAbsentExpr already treats an empty combo as "no matchers",
+		// so bare and labeled cases share the same construction path.
 		emit := func(dst *[]monitoringv1.Rule, combo []labelMatcher) {
 			*dst = append(*dst, monitoringv1.Rule{
-				Alert:       makeAlertName(comboSuffix(combo)),
+				Alert:       makeAlertName(len(combo) > 0),
 				Expr:        intstr.FromString(buildAbsentExpr(m, combo)),
 				For:         &duration,
 				Labels:      absenceRuleLabels,
@@ -470,21 +493,6 @@ func matchersKey(m []labelMatcher) string {
 		sb.WriteByte(',')
 	}
 	return sb.String()
-}
-
-// comboSuffix returns a stable string derived from matcher values, suitable
-// for appending to an alert name to make it unique.
-// Names are sorted; values are joined with underscores. The non-alphanumeric
-// splitter in makeAlertName then strips regex punctuation, so a value like
-// ".*compactor.*" cleanly becomes "Compactor" in the final alert name.
-// An empty or nil combo returns "", which makeAlertName treats as "no suffix".
-func comboSuffix(combo []labelMatcher) string {
-	sorted := sortMatchers(combo)
-	parts := make([]string, 0, len(sorted))
-	for _, lm := range sorted {
-		parts = append(parts, lm.Value)
-	}
-	return strings.Join(parts, "_")
 }
 
 // buildAbsentExpr constructs the PromQL absent() expression for a metric with

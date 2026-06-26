@@ -303,10 +303,9 @@ var _ = Describe("Alert Rule", func() {
 			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			checkRules(actual,
-				// sorted alphabetically; suffix is key-sorted: namespace=production, pod=api-server
 				[]string{
 					"AbsentContainersK8sKubePodStatusPhase",
-					"AbsentContainersK8sKubePodStatusPhaseProductionApiServer",
+					"AbsentLabelsContainersK8sKubePodStatusPhase",
 				},
 				[]string{
 					`absent(kube_pod_status_phase)`,
@@ -326,7 +325,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricStaging",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -358,7 +357,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricProd",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -375,12 +374,14 @@ var _ = Describe("Alert Rule", func() {
 			}
 			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
-			// bare + prod + staging — sorted alphabetically by alert name
+			// bare first (Absent…), then the two labeled rules share the
+			// AbsentLabels… name and are tiebroken by Expr-string order:
+			// `…namespace="prod"` < `…namespace="staging"`.
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricProd",
-					"AbsentContainersK8sMyMetricStaging",
+					"AbsentLabelsContainersK8sMyMetric",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -402,7 +403,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricProd",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -427,7 +428,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricProd",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -450,12 +451,16 @@ var _ = Describe("Alert Rule", func() {
 			}
 			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*": true})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actual).To(HaveLen(2))
-			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
-			// Names are sorted alphabetically inside the absent() call.
-			Expect(actual[1].Expr.String()).To(Equal(
-				`absent(my_metric{job=~".*compactor.*",namespace="prod",pod!~"canary.*",region!="dev"})`,
-			))
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentLabelsContainersK8sMyMetric",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{job=~".*compactor.*",namespace="prod",pod!~"canary.*",region!="dev"})`,
+				},
+			)
 		})
 
 		It(`wildcard "*" matches every non-__name__ label: collects all equality matchers`, func() {
@@ -466,11 +471,10 @@ var _ = Describe("Alert Rule", func() {
 			}
 			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*": true})
 			Expect(err).ToNot(HaveOccurred())
-			// Suffix is built from sorted keys: env, namespace, pod → "Staging_Prod_Api".
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricStagingProdApi",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -491,7 +495,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricXY",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -511,7 +515,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricR1T1",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -532,7 +536,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricProdT1",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -554,7 +558,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricProd",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,
@@ -577,7 +581,7 @@ var _ = Describe("Alert Rule", func() {
 			checkRules(actual,
 				[]string{
 					"AbsentContainersK8sMyMetric",
-					"AbsentContainersK8sMyMetricXProd",
+					"AbsentLabelsContainersK8sMyMetric",
 				},
 				[]string{
 					`absent(my_metric)`,

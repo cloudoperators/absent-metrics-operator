@@ -148,51 +148,53 @@ func main() {
 	}
 }
 
+// parseCSVSet parses a comma-separated string into a deduplicated set of
+// trimmed, non-empty entries. It is the shared parser for the --keep-labels
+// and --absent-labels flag.Value implementations below.
+func parseCSVSet(in string) map[string]bool {
+	out := make(map[string]bool)
+	for v := range strings.SplitSeq(in, ",") {
+		if s := strings.TrimSpace(v); s != "" {
+			out[s] = true
+		}
+	}
+	return out
+}
+
+// csvSetString renders a set as a comma-separated string. It is the shared
+// flag.Value.String() implementation for both flag types.
+func csvSetString[T ~map[string]bool](m T) string {
+	list := make([]string, 0, len(m))
+	for k := range m {
+		list = append(list, k)
+	}
+	return strings.Join(list, ",")
+}
+
 // labelsMap type is a wrapper around controllers.KeepLabel. It is used for the
 // `--keep-labels` flag to convert a comma-separated string into a map.
 type labelsMap controllers.KeepLabel
 
 // String implements the flag.Value interface.
-func (lm labelsMap) String() string {
-	list := make([]string, 0, len(lm))
-	for k := range lm {
-		list = append(list, k)
-	}
-	return strings.Join(list, ",")
-}
+func (lm labelsMap) String() string { return csvSetString(lm) }
 
 // Set implements the flag.Value interface.
 func (lm *labelsMap) Set(in string) error {
-	labels := make(labelsMap)
-	for v := range strings.SplitSeq(in, ",") {
-		labels[strings.TrimSpace(v)] = true
-	}
-
-	*lm = labels
+	*lm = labelsMap(parseCSVSet(in))
 	return nil
 }
 
 // absentLabelsMap type is a wrapper around controllers.AbsentLabel. It is used for the
-// `--absent-labels` flag to convert a comma-separated string of label names into a map.
+// `--absent-labels` flag to convert a comma-separated string of label-name
+// patterns into a map. See controllers.AbsentLabel for the supported pattern
+// syntax.
 type absentLabelsMap controllers.AbsentLabel
 
 // String implements the flag.Value interface.
-func (alm absentLabelsMap) String() string {
-	list := make([]string, 0, len(alm))
-	for k := range alm {
-		list = append(list, k)
-	}
-	return strings.Join(list, ",")
-}
+func (alm absentLabelsMap) String() string { return csvSetString(alm) }
 
 // Set implements the flag.Value interface.
 func (alm *absentLabelsMap) Set(in string) error {
-	labels := make(absentLabelsMap)
-	for v := range strings.SplitSeq(in, ",") {
-		if name := strings.TrimSpace(v); name != "" {
-			labels[name] = true
-		}
-	}
-	*alm = labels
+	*alm = absentLabelsMap(parseCSVSet(in))
 	return nil
 }

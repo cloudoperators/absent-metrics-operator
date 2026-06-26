@@ -108,7 +108,7 @@ var _ = Describe("Controller", Ordered, func() {
 				Expect(k8sClient.Update(ctx, &pr)).To(Succeed())
 
 				// Generate the corresponding absence alert rules.
-				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel, nil))
+				expected := expectedBareAbsenceGroups(pr.Spec.Groups, pr.GetName())
 
 				// Get the updated AbsencePromRule from the server and check if it has the
 				// corresponding absence alert rule.
@@ -138,7 +138,7 @@ var _ = Describe("Controller", Ordered, func() {
 				Expect(k8sClient.Update(ctx, &pr)).To(Succeed())
 
 				// Generate the corresponding absence alert rules.
-				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel, nil))
+				expected := expectedBareAbsenceGroups(pr.Spec.Groups, pr.GetName())
 
 				// Get the updated AbsencePromRule from the server and check if the
 				// corresponding absence alert rule has been updated.
@@ -231,7 +231,7 @@ var _ = Describe("Controller", Ordered, func() {
 				Expect(k8sClient.Update(ctx, &pr)).To(Succeed())
 
 				// Generate the corresponding absence alert rules.
-				expected := checkErrAndReturnResult(controllers.ParseRuleGroups(logger, pr.Spec.Groups, pr.GetName(), keepLabel, nil))
+				expected := expectedBareAbsenceGroups(pr.Spec.Groups, pr.GetName())
 
 				// Check that the corresponding absence alert rule was removed.
 				waitForControllerToProcess()
@@ -290,6 +290,18 @@ func checkErrAndReturnResult[T any](result T, err error) T {
 	GinkgoHelper()
 	Expect(err).ToNot(HaveOccurred())
 	return result
+}
+
+// expectedBareAbsenceGroups invokes ParseRuleGroups for an e2e test fixture and
+// returns just the bare-flavour rule groups. The e2e suite drives the controller
+// with AbsentLabel=nil, so the labeled output stream is always nil here; the helper
+// exists so the test sites don't have to repeat that discarding boilerplate.
+func expectedBareAbsenceGroups(in []monitoringv1.RuleGroup, promRuleName string) []monitoringv1.RuleGroup {
+	GinkgoHelper()
+	bare, labeled, err := controllers.ParseRuleGroups(logger, in, promRuleName, keepLabel, nil)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(labeled).To(BeNil(), "labeled groups should be empty when AbsentLabel is nil")
+	return bare
 }
 
 func expectPromRulesToMatch(expected, actual monitoringv1.PrometheusRule) {

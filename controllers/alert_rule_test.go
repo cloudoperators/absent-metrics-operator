@@ -13,6 +13,20 @@ import (
 
 var _ = Describe("Alert Rule", func() {
 	logger := zap.New(zap.UseDevMode(true))
+
+	// parseRuleAll invokes parseRule and returns the concatenation of bare and
+	// labeled rules. parseRule now splits its output into two slices so callers
+	// can route them into separate AbsencePrometheusRule CRs, but the unit
+	// tests in this file pre-date the split and assert on the combined ordered
+	// stream (bare first, then labeled — matching the old behaviour). The
+	// helper hides the split so the existing assertions can stay readable.
+	parseRuleAll := func(in monitoringv1.Rule, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.Rule, error) {
+		bare, labeled, err := parseRule(logger, in, keepLabel, absentLabel)
+		if err != nil {
+			return nil, err
+		}
+		return append(bare, labeled...), nil
+	}
 	keepLabel := KeepLabel{
 		LabelSupportGroup: true,
 		LabelTier:         true,
@@ -22,7 +36,7 @@ var _ = Describe("Alert Rule", func() {
 	DescribeTable("Parsing alert rule expressions",
 		func(in monitoringv1.Rule, out []monitoringv1.Rule) {
 			expected := out
-			actual, err := parseRule(logger, in, keepLabel, nil)
+			actual, err := parseRuleAll(in, keepLabel, nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(len(expected)))
 
@@ -262,7 +276,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, nil)
+			actual, err := parseRuleAll(rule, keepLabel, nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(kube_pod_status_phase)`))
@@ -274,7 +288,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(kube_pod_status_phase)`))
@@ -286,7 +300,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`kube_pod_status_phase{namespace="production",pod="api-server",phase="Failed"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			checkRules(actual,
 				// sorted alphabetically; suffix is key-sorted: namespace=production, pod=api-server
@@ -307,7 +321,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="staging"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			checkRules(actual,
 				[]string{
@@ -327,7 +341,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{env="prod"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
@@ -339,7 +353,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="prod"} > 70 and predict_linear(my_metric{namespace="prod"}[1h], 3600) > 100`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			checkRules(actual,
 				[]string{
@@ -359,7 +373,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="prod"} > 0 or my_metric{namespace="staging"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			// bare + prod + staging — sorted alphabetically by alert name
 			checkRules(actual,
@@ -382,7 +396,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="prod"} > 0 or my_metric{env="other"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			// bare rule + one labeled rule for the occurrence that had namespace
 			checkRules(actual,
@@ -403,7 +417,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace=~"prod.*"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, absentLabel)
+			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
@@ -415,7 +429,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="prod",pod="api",env="staging"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*": true})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*": true})
 			Expect(err).ToNot(HaveOccurred())
 			// Suffix is built from sorted keys: env, namespace, pod → "Staging_Prod_Api".
 			checkRules(actual,
@@ -436,7 +450,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{label_a="x",label_b="y",other="z"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"label_*": true})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"label_*": true})
 			Expect(err).ToNot(HaveOccurred())
 			// label_a, label_b collected; "other" excluded.
 			checkRules(actual,
@@ -457,7 +471,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{request_id="r1",trace_id="t1",namespace="prod"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*_id": true})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*_id": true})
 			Expect(err).ToNot(HaveOccurred())
 			checkRules(actual,
 				[]string{
@@ -477,7 +491,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="prod",trace_id="t1",pod="api"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*ace*": true})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*ace*": true})
 			Expect(err).ToNot(HaveOccurred())
 			// namespace and trace_id both contain "ace"; pod does not.
 			checkRules(actual,
@@ -500,7 +514,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`{__name__="my_metric",namespace="prod"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"*": true})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*": true})
 			Expect(err).ToNot(HaveOccurred())
 			checkRules(actual,
 				[]string{
@@ -520,7 +534,7 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{namespace="prod",label_a="x",other="z"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{
 				"namespace": true,
 				"label_*":   true,
 			})
@@ -543,10 +557,110 @@ var _ = Describe("Alert Rule", func() {
 				Expr:   intstr.FromString(`my_metric{env="prod"} > 0`),
 				Labels: ruleLabels,
 			}
-			actual, err := parseRule(logger, rule, keepLabel, AbsentLabel{"label_*": true})
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"label_*": true})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(HaveLen(1))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
+		})
+	})
+
+	// These tests exercise ParseRuleGroups itself (not parseRule) — specifically
+	// its cross-rule, cross-group dedup. Two distinct source alert rules in the
+	// same PrometheusRule can legitimately reference the same metric (e.g. an
+	// alert for "down 5m" and another for "down 15m"); without dedup, both
+	// invocations of parseRule emit their own absent(metric) rule and the output
+	// AbsencePrometheusRule contains two identical rules. This regression was
+	// observed in production for absent(opensearch_cluster_status).
+	Describe("Cross-rule dedup", func() {
+		It("collapses absent() emitted by two source alerts in the same group", func() {
+			groups := []monitoringv1.RuleGroup{
+				{
+					Name: "opensearch.alerts",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "OpensearchDown5m",
+							Expr:  intstr.FromString(`opensearch_cluster_status{} != 0`),
+							Labels: map[string]string{
+								"support_group": "containers",
+								"service":       "elk",
+							},
+						},
+						{
+							Alert: "OpensearchDown15m",
+							Expr:  intstr.FromString(`opensearch_cluster_status{} > 1`),
+							Labels: map[string]string{
+								"support_group": "containers",
+								"service":       "elk",
+							},
+						},
+					},
+				},
+			}
+			bare, labeled, err := ParseRuleGroups(logger, groups, "elk-alerts", keepLabel, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(labeled).To(BeNil())
+			Expect(bare).To(HaveLen(1))
+			Expect(bare[0].Rules).To(HaveLen(1), "expected a single deduped absent(opensearch_cluster_status) rule")
+			Expect(bare[0].Rules[0].Expr.String()).To(Equal(`absent(opensearch_cluster_status)`))
+		})
+
+		It("collapses absent() emitted by alerts in different groups of the same PrometheusRule", func() {
+			groups := []monitoringv1.RuleGroup{
+				{
+					Name: "opensearch.alerts",
+					Rules: []monitoringv1.Rule{{
+						Alert: "OpensearchDown",
+						Expr:  intstr.FromString(`opensearch_cluster_status != 0`),
+						Labels: map[string]string{
+							"support_group": "containers",
+							"service":       "elk",
+						},
+					}},
+				},
+				{
+					Name: "opensearch.recording",
+					Rules: []monitoringv1.Rule{{
+						Alert: "OpensearchDegraded",
+						Expr:  intstr.FromString(`opensearch_cluster_status > 0`),
+						Labels: map[string]string{
+							"support_group": "containers",
+							"service":       "elk",
+						},
+					}},
+				},
+			}
+			bare, _, err := ParseRuleGroups(logger, groups, "elk-alerts", keepLabel, nil)
+			Expect(err).ToNot(HaveOccurred())
+			// First group keeps the rule; second group emits nothing once
+			// deduped, so it does not produce an output RuleGroup at all.
+			Expect(bare).To(HaveLen(1))
+			Expect(bare[0].Name).To(Equal("elk-alerts/opensearch.alerts"))
+			Expect(bare[0].Rules).To(HaveLen(1))
+			Expect(bare[0].Rules[0].Expr.String()).To(Equal(`absent(opensearch_cluster_status)`))
+		})
+
+		It("splits bare and labeled rules into separate output streams", func() {
+			groups := []monitoringv1.RuleGroup{{
+				Name: "opensearch.alerts",
+				Rules: []monitoringv1.Rule{{
+					Alert: "OpensearchDown",
+					Expr:  intstr.FromString(`opensearch_cluster_status{namespace="prod"} != 0`),
+					Labels: map[string]string{
+						"support_group": "containers",
+						"service":       "elk",
+					},
+				}},
+			}}
+			bare, labeled, err := ParseRuleGroups(logger, groups, "elk-alerts", keepLabel, AbsentLabel{"namespace": true})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bare).To(HaveLen(1))
+			Expect(labeled).To(HaveLen(1))
+			Expect(bare[0].Rules).To(HaveLen(1))
+			Expect(bare[0].Rules[0].Expr.String()).To(Equal(`absent(opensearch_cluster_status)`))
+			Expect(labeled[0].Rules).To(HaveLen(1))
+			Expect(labeled[0].Rules[0].Expr.String()).To(Equal(`absent(opensearch_cluster_status{namespace="prod"})`))
+			// Group names match on both sides so the two CRs reflect the same source group structure.
+			Expect(bare[0].Name).To(Equal(labeled[0].Name))
 		})
 	})
 })

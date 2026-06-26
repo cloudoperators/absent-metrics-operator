@@ -23,6 +23,7 @@ import (
 
 const (
 	absencePromRuleNameSuffix          = "-absent-metric-alert-rules"
+	labeledAbsencePromRuleNameSuffix   = "-absent-metric-labeled-alert-rules"
 	DefaultAbsencePromRuleNameTemplate = `{{ if index .metadata.labels "thanos-ruler" }}{{ index .metadata.labels "thanos-ruler" }}{{ else }}{{ index .metadata.labels "prometheus" }}{{ end }}`
 )
 
@@ -31,9 +32,24 @@ const (
 // alert rules.
 type AbsencePromRuleNameGenerator func(*monitoringv1.PrometheusRule) (string, error)
 
-// CreateAbsencePromRuleNameGenerator creates an absencePromRuleNameGenerator function
-// based on a template string.
+// CreateAbsencePromRuleNameGenerator creates an AbsencePromRuleNameGenerator for the
+// bare absence rules CR (one absent(metric_name) per metric), based on a template string.
 func CreateAbsencePromRuleNameGenerator(tmplStr string) (AbsencePromRuleNameGenerator, error) {
+	return createAbsencePromRuleNameGenerator(tmplStr, absencePromRuleNameSuffix)
+}
+
+// CreateLabeledAbsencePromRuleNameGenerator creates an AbsencePromRuleNameGenerator for
+// the labeled absence rules CR (one absent(metric_name{label="value",...}) per distinct
+// label-value combo), based on a template string. The generated name uses a distinct
+// suffix so the labeled CR sits next to the bare CR rather than colliding with it.
+func CreateLabeledAbsencePromRuleNameGenerator(tmplStr string) (AbsencePromRuleNameGenerator, error) {
+	return createAbsencePromRuleNameGenerator(tmplStr, labeledAbsencePromRuleNameSuffix)
+}
+
+// createAbsencePromRuleNameGenerator is the shared template-driven name generator used
+// by both the bare and labeled flavours. The two public constructors above differ only
+// in the suffix they pass in.
+func createAbsencePromRuleNameGenerator(tmplStr, suffix string) (AbsencePromRuleNameGenerator, error) {
 	t, err := template.New("promRuleNameGenerator").Option("missingkey=error").Parse(tmplStr)
 	if err != nil {
 		return nil, err
@@ -57,8 +73,16 @@ func CreateAbsencePromRuleNameGenerator(tmplStr string) (AbsencePromRuleNameGene
 			return "", fmt.Errorf("could not generate AbsencePrometheusRule name: %w", err)
 		}
 
-		return buf.String() + absencePromRuleNameSuffix, nil
+		return buf.String() + suffix, nil
 	}, nil
+}
+
+// isAbsencePromRuleName reports whether name looks like one of the absence CR names this
+// operator generates (either bare or labeled flavour). Used by handleObjectNotFound to
+// short-circuit reconciliation when a managed CR is itself deleted.
+func isAbsencePromRuleName(name string) bool {
+	return strings.HasSuffix(name, absencePromRuleNameSuffix) ||
+		strings.HasSuffix(name, labeledAbsencePromRuleNameSuffix)
 }
 
 func (r *PrometheusRuleReconciler) newAbsencePrometheusRule(name, namespace string, labels map[string]string) *monitoringv1.PrometheusRule {
@@ -165,53 +189,80 @@ var errCorrespondingAbsencePromRuleNotExists = errors.New("corresponding Absence
 //
 // We use this when a PrometheusRule resource has been deleted or if the
 // 'absent-metrics-operator/disable' is set to 'true'.
+//
+// When absencePromRule is non-empty, the targeted AbsencePrometheusRule is fetched by
+// name and scrubbed. When absencePromRule is empty, every managed AbsencePrometheusRule
+// in the namespace is inspected and any that holds groups belonging to this source
+// PrometheusRule is scrubbed — important now that one source can produce both a bare
+// CR and a labeled CR; both must be cleaned up.
 func (r *PrometheusRuleReconciler) cleanUpOrphanedAbsenceAlertRules(
 	ctx context.Context,
 	promRule types.NamespacedName,
 	absencePromRule string,
 ) error {
 
-	// Step 1: find the corresponding AbsencePrometheusRule that needs to be cleaned up.
-	var aPRToClean *monitoringv1.PrometheusRule
 	if absencePromRule != "" {
-		var err error
-		if aPRToClean, err = r.getExistingAbsencePrometheusRule(ctx, absencePromRule, promRule.Namespace); err != nil {
+		aPRToClean, err := r.getExistingAbsencePrometheusRule(ctx, absencePromRule, promRule.Namespace)
+		if err != nil {
 			return err
 		}
-	} else {
-		// Since we don't know the corresponding AbsencePrometheusRule for this PrometheusRule
-		// therefore we have to list all AbsencePrometheusRules in the concerning namespace and
-		// find the specific AbsencePrometheusRule that contains the absence alert rules that
-		// were generated for this PrometheusRule.
-		var listOpts client.ListOptions
-		client.InNamespace(promRule.Namespace).ApplyToList(&listOpts)
-		client.HasLabels{labelOperatorManagedBy}.ApplyToList(&listOpts)
-		var absencePromRules monitoringv1.PrometheusRuleList
-		if err := r.List(ctx, &absencePromRules, &listOpts); err != nil {
-			return err
-		}
-
-		for _, aPR := range absencePromRules.Items {
-			for _, g := range aPR.Spec.Groups {
-				n := promRulefromAbsenceRuleGroupName(g.Name)
-				if n != "" && n == promRule.Name {
-					aPRToClean = &aPR
-					break
-				}
-			}
-		}
+		return r.applyScrubToAbsencePR(ctx, aPRToClean, promRule.Name)
 	}
-	if aPRToClean == nil {
+
+	// List-mode: walk every managed AbsencePrometheusRule in the namespace and scrub
+	// any that owns groups for this source PrometheusRule. We do NOT break after the
+	// first match: a single source can land in two CRs (bare + labeled) and both
+	// must be cleaned up.
+	var listOpts client.ListOptions
+	client.InNamespace(promRule.Namespace).ApplyToList(&listOpts)
+	client.HasLabels{labelOperatorManagedBy}.ApplyToList(&listOpts)
+	var absencePromRules monitoringv1.PrometheusRuleList
+	if err := r.List(ctx, &absencePromRules, &listOpts); err != nil {
+		return err
+	}
+
+	scrubbed := false
+	for i := range absencePromRules.Items {
+		aPR := &absencePromRules.Items[i]
+		if !absencePRContainsGroupsFor(aPR, promRule.Name) {
+			continue
+		}
+		if err := r.applyScrubToAbsencePR(ctx, aPR, promRule.Name); err != nil {
+			return err
+		}
+		scrubbed = true
+	}
+	if !scrubbed {
 		return errCorrespondingAbsencePromRuleNotExists
 	}
+	return nil
+}
 
-	// Step 2: iterate through the AbsenceRuleGroups, skip those that were generated for
-	// this PrometheusRule and keep the rest as is.
-	oldRuleGroups := aPRToClean.Spec.Groups
+// absencePRContainsGroupsFor reports whether an AbsencePrometheusRule has any rule
+// group attributable to the named source PrometheusRule (i.e. whose group name encodes
+// that source via the "<srcName>/<originalGroup>" convention).
+func absencePRContainsGroupsFor(aPR *monitoringv1.PrometheusRule, sourceName string) bool {
+	for _, g := range aPR.Spec.Groups {
+		if promRulefromAbsenceRuleGroupName(g.Name) == sourceName {
+			return true
+		}
+	}
+	return false
+}
+
+// applyScrubToAbsencePR removes every rule group attributable to sourceName from aPR
+// and persists the result. When all groups belong to sourceName the CR is deleted
+// outright; otherwise it is patched. Returns nil when no change is needed.
+func (r *PrometheusRuleReconciler) applyScrubToAbsencePR(
+	ctx context.Context,
+	aPR *monitoringv1.PrometheusRule,
+	sourceName string,
+) error {
+
+	oldRuleGroups := aPR.Spec.Groups
 	newRuleGroups := make([]monitoringv1.RuleGroup, 0, len(oldRuleGroups))
 	for _, g := range oldRuleGroups {
-		n := promRulefromAbsenceRuleGroupName(g.Name)
-		if n != "" && n == promRule.Name {
+		if promRulefromAbsenceRuleGroupName(g.Name) == sourceName {
 			continue
 		}
 		newRuleGroups = append(newRuleGroups, g)
@@ -219,15 +270,46 @@ func (r *PrometheusRuleReconciler) cleanUpOrphanedAbsenceAlertRules(
 	if reflect.DeepEqual(oldRuleGroups, newRuleGroups) {
 		return nil
 	}
-
-	// Step 3: if, after the cleanup, the AbsencePrometheusRule ends up being empty then
-	// delete it otherwise update.
 	if len(newRuleGroups) == 0 {
-		return r.deleteAbsencePrometheusRule(ctx, aPRToClean)
+		return r.deleteAbsencePrometheusRule(ctx, aPR)
 	}
-	unmodified := aPRToClean.DeepCopy()
-	aPRToClean.Spec.Groups = newRuleGroups
-	return r.patchAbsencePrometheusRule(ctx, aPRToClean, unmodified)
+	unmodified := aPR.DeepCopy()
+	aPR.Spec.Groups = newRuleGroups
+	return r.patchAbsencePrometheusRule(ctx, aPR, unmodified)
+}
+
+// cleanUpAllAbsencePromRulesFor cleans up both the bare AbsencePrometheusRule and the
+// labeled AbsencePrometheusRule for a source PrometheusRule whose disable label was
+// flipped on. Each is targeted by name (fast Get path); errCorrespondingAbsencePromRuleNotExists
+// from any single one is treated as "nothing to do for that flavour" and not propagated.
+// All other errors are returned (first one wins) so the caller can decide whether to retry.
+func (r *PrometheusRuleReconciler) cleanUpAllAbsencePromRulesFor(
+	ctx context.Context,
+	source *monitoringv1.PrometheusRule,
+	key types.NamespacedName,
+) error {
+
+	generators := []AbsencePromRuleNameGenerator{r.PrometheusRuleName, r.LabeledPrometheusRuleName}
+	var firstErr error
+	for _, gen := range generators {
+		if gen == nil {
+			continue
+		}
+		aPRName, err := gen(source)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		err = r.cleanUpOrphanedAbsenceAlertRules(ctx, key, aPRName)
+		if err != nil && !apierrors.IsNotFound(err) && !errors.Is(err, errCorrespondingAbsencePromRuleNotExists) {
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
 }
 
 // cleanUpAbsencePrometheusRule checks an AbsencePrometheusRule to see if it contains
@@ -245,20 +327,27 @@ func (r *PrometheusRuleReconciler) cleanUpAbsencePrometheusRule(ctx context.Cont
 
 	// Step 2: collect names of those PrometheusRule resources whose absence alert rules
 	// would end up in this AbsencePrometheusRule as per the name generation template.
+	// A source PR is a match if EITHER its bare CR name OR its labeled CR name (when
+	// the labeled feature is enabled) equals the CR we're scrubbing.
 	aPRName := absencePromRule.GetName()
+	generators := []AbsencePromRuleNameGenerator{r.PrometheusRuleName, r.LabeledPrometheusRuleName}
 	prNames := make(map[string]bool)
 	for _, pr := range promRules.Items {
 		if _, ok := pr.Labels[labelOperatorManagedBy]; ok {
 			continue
 		}
-		if n, err := r.PrometheusRuleName(&pr); err == nil {
-			if n == aPRName {
+		for _, gen := range generators {
+			if gen == nil {
+				continue
+			}
+			if n, err := gen(&pr); err == nil && n == aPRName {
 				prNames[pr.GetName()] = true
+				break
 			}
 		}
 	}
 
-	// Step 4: iterate through all the AbsencePrometheusRule's RuleGroups and remove those
+	// Step 3: iterate through all the AbsencePrometheusRule's RuleGroups and remove those
 	// that don't belong to any PrometheusRule.
 	newRuleGroups := make([]monitoringv1.RuleGroup, 0, len(absencePromRule.Spec.Groups))
 	for _, g := range absencePromRule.Spec.Groups {
@@ -272,7 +361,7 @@ func (r *PrometheusRuleReconciler) cleanUpAbsencePrometheusRule(ctx context.Cont
 		return nil
 	}
 
-	// Step 5: if, after the cleanup, the AbsencePrometheusRule ends up being empty then
+	// Step 4: if, after the cleanup, the AbsencePrometheusRule ends up being empty then
 	// delete it otherwise update.
 	if len(newRuleGroups) == 0 {
 		return r.deleteAbsencePrometheusRule(ctx, absencePromRule)
@@ -283,18 +372,67 @@ func (r *PrometheusRuleReconciler) cleanUpAbsencePrometheusRule(ctx context.Cont
 }
 
 // updateAbsenceAlertRules generates absence alert rules for the given PrometheusRule and
-// adds them to the corresponding AbsencePrometheusRule.
+// adds them to the corresponding AbsencePrometheusRule(s).
+//
+// When AbsentLabel is non-empty and LabeledPrometheusRuleName is configured, bare and
+// labeled absence rules land in two SEPARATE AbsencePrometheusRule CRs (one per
+// flavour). When the labeled feature is off (either AbsentLabel empty or
+// LabeledPrometheusRuleName nil) only the bare CR is reconciled — which is the
+// pre-feature behaviour.
 func (r *PrometheusRuleReconciler) updateAbsenceAlertRules(ctx context.Context, promRule *monitoringv1.PrometheusRule) error {
 	promRuleName := promRule.GetName()
 	namespace := promRule.GetNamespace()
 	log := r.Log.WithValues("name", promRuleName, "namespace", namespace)
 
-	// Step 1: get the corresponding AbsencePrometheusRule if it exists.
-	existingAbsencePrometheusRule := false
-	aPRName, err := r.PrometheusRuleName(promRule)
+	// Parse the source rule groups once into the two output streams.
+	bareGroups, labeledGroups, err := ParseRuleGroups(log, promRule.Spec.Groups, promRuleName, r.KeepLabel, r.AbsentLabel)
 	if err != nil {
 		return err
 	}
+
+	// Reconcile the bare CR.
+	bareName, err := r.PrometheusRuleName(promRule)
+	if err != nil {
+		return err
+	}
+	if err := r.reconcileOneAbsenceCR(ctx, promRule, bareName, bareGroups); err != nil {
+		return err
+	}
+
+	// Reconcile the labeled CR only when the feature is enabled. We deliberately
+	// always make this call (even when labeledGroups is nil) so that switching
+	// AbsentLabel off after a previous on-cycle still triggers cleanup of the
+	// labeled CR via the "no new groups → scrub existing" path inside
+	// reconcileOneAbsenceCR.
+	if r.LabeledPrometheusRuleName != nil {
+		labeledName, err := r.LabeledPrometheusRuleName(promRule)
+		if err != nil {
+			return err
+		}
+		if err := r.reconcileOneAbsenceCR(ctx, promRule, labeledName, labeledGroups); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// reconcileOneAbsenceCR reconciles a single AbsencePrometheusRule CR for one source
+// PrometheusRule and one flavour of absence rules (bare or labeled). It encapsulates
+// the get-or-create / merge / patch / orphan-cleanup state machine that used to live
+// inline in updateAbsenceAlertRules, and is now invoked once for the bare CR and once
+// for the labeled CR.
+func (r *PrometheusRuleReconciler) reconcileOneAbsenceCR(
+	ctx context.Context,
+	promRule *monitoringv1.PrometheusRule,
+	aPRName string,
+	absenceRuleGroups []monitoringv1.RuleGroup,
+) error {
+
+	promRuleName := promRule.GetName()
+	namespace := promRule.GetNamespace()
+
+	// Step 1: get the corresponding AbsencePrometheusRule if it exists.
+	existingAbsencePrometheusRule := false
 	absencePromRule, err := r.getExistingAbsencePrometheusRule(ctx, aPRName, namespace)
 	switch {
 	case err == nil:
@@ -309,25 +447,24 @@ func (r *PrometheusRuleReconciler) updateAbsenceAlertRules(ctx context.Context, 
 
 	unmodifiedAbsencePromRule := absencePromRule.DeepCopy()
 
-	// Step 2: parse RuleGroups and generate corresponding absence alert rules.
-	absenceRuleGroups, err := ParseRuleGroups(log, promRule.Spec.Groups, promRuleName, r.KeepLabel, r.AbsentLabel)
-	if err != nil {
-		return err
-	}
-
-	// Step 3: we clean up orphaned absence alert rules from the AbsencePrometheusRule in
-	// case no absence alert rules were generated.
-	// This can happen when changes have been made to alert rules that result in no absent
-	// alerts. E.g. absent() or the 'no_alert_on_absence' label was used.
+	// Step 2: if there are no rule groups for this flavour then clean up any orphans.
+	// This can happen when changes have been made to alert rules that result in no
+	// absent alerts (e.g. absent() or the 'no_alert_on_absence' label was used), or
+	// when the labeled feature was just turned off and the labeled CR needs to be
+	// emptied.
 	if len(absenceRuleGroups) == 0 {
 		if existingAbsencePrometheusRule {
 			key := types.NamespacedName{Namespace: namespace, Name: promRuleName}
-			return r.cleanUpOrphanedAbsenceAlertRules(ctx, key, aPRName)
+			err := r.cleanUpOrphanedAbsenceAlertRules(ctx, key, aPRName)
+			if errors.Is(err, errCorrespondingAbsencePromRuleNotExists) {
+				return nil
+			}
+			return err
 		}
 		return nil
 	}
 
-	// Step 4: if it's an existing AbsencePrometheusRule then update otherwise create a new resource.
+	// Step 3: if it's an existing AbsencePrometheusRule then update otherwise create a new resource.
 	if existingAbsencePrometheusRule {
 		existingRuleGroups := unmodifiedAbsencePromRule.Spec.Groups
 		result := mergeAbsenceRuleGroups(promRuleName, existingRuleGroups, absenceRuleGroups)

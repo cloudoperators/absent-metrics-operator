@@ -162,8 +162,9 @@ func (e *ruleGroupParseError) Error() string {
 	return e.cause.Error()
 }
 
-// ParseRuleGroups takes a slice of RuleGroup that has alert rules and returns
-// a new slice of RuleGroup that has the corresponding absence alert rules.
+// ParseRuleGroups takes a slice of RuleGroup that has alert rules and returns two
+// new slices of RuleGroup: one for the bare absence rules (absent(metric_name)),
+// and one for the labeled absence rules (absent(metric_name{label="value",...})).
 //
 // The labels specified in the keepLabel map will be carried over to the corresponding
 // absence alerts unless templating (i.e. $labels) was used for these labels.
@@ -172,65 +173,114 @@ func (e *ruleGroupParseError) Error() string {
 // each metric:
 //
 //  1. The original bare absence rule (absent(metric_name)) — always present, identical to
-//     the pre-feature behaviour. This rule fires whenever the metric is completely absent
-//     from the scrape target, regardless of label values.
+//     the pre-feature behaviour. Returned in the first slice. This rule fires whenever
+//     the metric is completely absent from the scrape target, regardless of label values.
 //
 //  2. One additional labeled absence rule per distinct label-value combination found in
-//     the VectorSelector(s) of the expression. These narrower rules fire when the metric
-//     is absent for a specific label dimension (e.g. a particular namespace/pod pair).
-//     Each labeled rule has a unique alert name derived from the label values, so they
-//     coexist in the same rule group without collision.
+//     the VectorSelector(s) of the expression. Returned in the second slice. These
+//     narrower rules fire when the metric is absent for a specific label dimension
+//     (e.g. a particular namespace/pod pair). Each labeled rule has a unique alert name
+//     derived from the label values, so they coexist in the same rule group without
+//     collision.
+//
+// When absentLabel is empty the second slice is always nil.
+//
+// Within each output stream, alert-name duplicates are eliminated: if two different
+// source alert rules in the same group (or across groups in the same PrometheusRule)
+// reference the same metric, only the first absence rule with that alert name is kept.
+// This prevents identical absent(...) expressions from being emitted multiple times
+// when several source alerts share an underlying metric.
 //
 // The rule group names for the absence alerts have the format: promRuleName/originalGroupName.
-func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleName string, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.RuleGroup, error) {
-	out := make([]monitoringv1.RuleGroup, 0, len(in))
+func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleName string, keepLabel KeepLabel, absentLabel AbsentLabel) (bare, labeled []monitoringv1.RuleGroup, err error) {
+	bare = make([]monitoringv1.RuleGroup, 0, len(in))
+	if len(absentLabel) > 0 {
+		labeled = make([]monitoringv1.RuleGroup, 0, len(in))
+	}
+
+	// Dedupe by alert name across all rule groups of this PrometheusRule. The
+	// same metric can be referenced by multiple source alert rules (e.g. alerts
+	// for "down 5m" and "down 15m" both on the same metric); without this
+	// guard, parseRule emits one absent(metric) per invocation and they pile
+	// up in the output. We dedupe globally rather than per-group so that
+	// identical bare/labeled absence rules in different source rule groups
+	// also collapse to a single emission. The first occurrence wins.
+	seenBare := make(map[string]bool)
+	seenLabeled := make(map[string]bool)
+
 	for _, g := range in {
-		var absenceAlertRules []monitoringv1.Rule
+		var bareRules, labeledRules []monitoringv1.Rule
 		for _, r := range g.Rules {
-			rules, err := parseRule(logger, r, keepLabel, absentLabel)
+			b, l, err := parseRule(logger, r, keepLabel, absentLabel)
 			if err != nil {
-				return nil, &ruleGroupParseError{cause: err}
+				return nil, nil, &ruleGroupParseError{cause: err}
 			}
-			if len(rules) > 0 {
-				absenceAlertRules = append(absenceAlertRules, rules...)
-			}
+			bareRules = appendUniqueByAlert(bareRules, b, seenBare)
+			labeledRules = appendUniqueByAlert(labeledRules, l, seenLabeled)
 		}
 
-		if len(absenceAlertRules) > 0 {
-			// Sort alert rules for consistent test results.
-
-			sort.SliceStable(absenceAlertRules, func(i, j int) bool {
-				return absenceAlertRules[i].Alert < absenceAlertRules[j].Alert
-			})
-
-			out = append(out, monitoringv1.RuleGroup{
-				Name:  AbsenceRuleGroupName(promRuleName, g.Name),
-				Rules: absenceAlertRules,
-			})
+		groupName := AbsenceRuleGroupName(promRuleName, g.Name)
+		if len(bareRules) > 0 {
+			sortByAlert(bareRules)
+			bare = append(bare, monitoringv1.RuleGroup{Name: groupName, Rules: bareRules})
+		}
+		if len(labeledRules) > 0 {
+			sortByAlert(labeledRules)
+			labeled = append(labeled, monitoringv1.RuleGroup{Name: groupName, Rules: labeledRules})
 		}
 	}
-	return out, nil
+	return bare, labeled, nil
+}
+
+// appendUniqueByAlert appends rules from src to dst, skipping any whose Alert
+// name is already in seen. seen is updated in place. This is the deduplication
+// hook used by ParseRuleGroups to guarantee that each output rule group (and,
+// transitively, each AbsencePrometheusRule) contains every absent(...)
+// expression at most once.
+func appendUniqueByAlert(dst, src []monitoringv1.Rule, seen map[string]bool) []monitoringv1.Rule {
+	for _, r := range src {
+		if seen[r.Alert] {
+			continue
+		}
+		seen[r.Alert] = true
+		dst = append(dst, r)
+	}
+	return dst
+}
+
+// sortByAlert sorts rules by Alert name in place. Stable to keep the
+// per-metric emission order from parseRule visible in tests.
+func sortByAlert(rules []monitoringv1.Rule) {
+	sort.SliceStable(rules, func(i, j int) bool {
+		return rules[i].Alert < rules[j].Alert
+	})
 }
 
 var nonAlphaNumericRx = regexp.MustCompile(`[^a-zA-Z0-9]`)
 
 // parseRule generates the corresponding absence alert rules for a given Rule.
-// Since an alert expression can reference multiple time series therefore a slice of
-// []monitoringv1.Rule is returned as multiple absence alert rules would be generated —
-// one for each time series.
+// Since an alert expression can reference multiple time series therefore a slice
+// of []monitoringv1.Rule is returned as multiple absence alert rules would be
+// generated — one for each time series.
+//
+// Bare rules (absent(metric_name)) and labeled rules
+// (absent(metric_name{label="value",...})) are returned in two separate slices
+// so callers can route them into different AbsencePrometheusRule CRs.
 //
 // When absentLabel is non-empty, each metric yields:
-//   - One bare absence rule (absent(metric_name)) — identical to pre-feature behaviour.
-//   - One additional labeled absence rule per distinct label-value combination found in
-//     the VectorSelector(s) of the expression. Duplicate combos are deduplicated.
-func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, absentLabel AbsentLabel) ([]monitoringv1.Rule, error) {
+//   - One bare absence rule in the first slice — identical to pre-feature behaviour.
+//   - One labeled absence rule per distinct label-value combination, in the second slice.
+//     Duplicate combos are deduplicated.
+//
+// When absentLabel is empty the second slice is always nil.
+func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, absentLabel AbsentLabel) (bare, labeled []monitoringv1.Rule, err error) {
 	// Do not parse recording rules.
 	if in.Record != "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 	// Do not parse alert rule if it has the no_alert_on_absence label.
 	if in.Labels != nil && parseBool(in.Labels[labelNoAlertOnAbsence]) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	exprStr := in.Expr.String()
@@ -249,10 +299,10 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		// TODO: remove newline characters from expression.
 		// The returned error has the expression at the end because
 		// it could contain newline characters.
-		return nil, fmt.Errorf("could not parse rule expression: %s: %s", err.Error(), exprStr)
+		return nil, nil, fmt.Errorf("could not parse rule expression: %s: %s", err.Error(), exprStr)
 	}
 	if len(mex.found) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Default labels.
@@ -271,7 +321,6 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		}
 	}
 
-	var out []monitoringv1.Rule
 	for m, occurrences := range mex.found {
 		// makeAlertName constructs an alert name from the metric name plus an
 		// optional suffix (used to distinguish labeled rules from the bare rule
@@ -314,13 +363,13 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		duration := monitoringv1.Duration("10m")
 
 		// emit appends a single absence rule for metric m using the given label
-		// combo. An empty combo produces the bare absent(m) rule; a non-empty
-		// combo produces a labeled rule with a unique alert-name suffix.
-		// buildAbsentExpr and comboSuffix both already treat an empty combo as
-		// "no matchers / no suffix", so the bare and labeled cases collapse
-		// into a single emission path.
-		emit := func(combo map[string]string) {
-			out = append(out, monitoringv1.Rule{
+		// combo to the target slice. An empty combo produces the bare absent(m)
+		// rule; a non-empty combo produces a labeled rule with a unique
+		// alert-name suffix. buildAbsentExpr and comboSuffix both already
+		// treat an empty combo as "no matchers / no suffix", so the bare and
+		// labeled cases share the same construction path.
+		emit := func(dst *[]monitoringv1.Rule, combo map[string]string) {
+			*dst = append(*dst, monitoringv1.Rule{
 				Alert:       makeAlertName(comboSuffix(combo)),
 				Expr:        intstr.FromString(buildAbsentExpr(m, combo)),
 				For:         &duration,
@@ -329,28 +378,32 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 			})
 		}
 
-		// Always generate the original bare absence rule (combo == nil).
-		emit(nil)
+		// Always generate the original bare absence rule (combo == nil) into
+		// the bare slice.
+		emit(&bare, nil)
 
 		// When absentLabel is set, also generate one additional labeled rule
-		// per distinct label-value combination found in the VectorSelectors.
-		// Empty combos are skipped because they would duplicate the bare rule.
+		// per distinct label-value combination found in the VectorSelectors,
+		// into the labeled slice. Empty combos are skipped because they would
+		// duplicate the bare rule.
 		if len(absentLabel) > 0 {
 			for _, combo := range distinctLabelCombos(occurrences) {
 				if len(combo) == 0 {
 					continue
 				}
-				emit(combo)
+				emit(&labeled, combo)
 			}
 		}
 	}
 
-	// Sort alert rules for consistent test results.
-	sort.SliceStable(out, func(i, j int) bool {
-		return out[i].Alert < out[j].Alert
-	})
+	// Sort each output slice for consistent test results. ParseRuleGroups
+	// re-sorts after deduping across rule groups, so this only matters for
+	// callers that invoke parseRule directly (and for stable behaviour when
+	// dedup is a no-op).
+	sortByAlert(bare)
+	sortByAlert(labeled)
 
-	return out, nil
+	return bare, labeled, nil
 }
 
 // distinctLabelCombos returns the deduplicated set of label-value maps from

@@ -100,6 +100,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// When --absent-labels is set we also produce a SECOND AbsencePrometheusRule CR
+	// that holds the labeled (absent(metric{...})) rules, keeping it separate from
+	// the bare absent(metric) CR. The labeled CR name uses the same name template as
+	// the bare one but with a distinct suffix so the two coexist side-by-side.
+	var labeledPrometheusRuleNameGen controllers.AbsencePromRuleNameGenerator
+	if len(absentLabel) > 0 {
+		labeledPrometheusRuleNameGen, err = controllers.CreateLabeledAbsencePromRuleNameGenerator(prometheusRuleName)
+		if err != nil {
+			setupLog.Error(err, "unable to parse labeled PrometheusRule name template", "prom-rule-name", prometheusRuleName)
+			os.Exit(1)
+		}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -117,12 +130,13 @@ func main() {
 	controllers.RegisterMetrics()
 
 	if err = (&controllers.PrometheusRuleReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		Log:                ctrl.Log.WithName("controller").WithName("prometheusrule"),
-		KeepLabel:          controllers.KeepLabel(keepLabel),
-		AbsentLabel:        controllers.AbsentLabel(absentLabel),
-		PrometheusRuleName: prometheusRuleNameGen,
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		Log:                       ctrl.Log.WithName("controller").WithName("prometheusrule"),
+		KeepLabel:                 controllers.KeepLabel(keepLabel),
+		AbsentLabel:               controllers.AbsentLabel(absentLabel),
+		PrometheusRuleName:        prometheusRuleNameGen,
+		LabeledPrometheusRuleName: labeledPrometheusRuleNameGen,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PrometheusRule")
 		os.Exit(1)

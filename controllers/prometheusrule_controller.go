@@ -6,7 +6,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -37,6 +36,11 @@ type PrometheusRuleReconciler struct {
 	Log    logr.Logger
 
 	PrometheusRuleName AbsencePromRuleNameGenerator
+	// LabeledPrometheusRuleName generates the name of the AbsencePrometheusRule that
+	// holds the labeled (absent(metric{...})) rules. When nil, labeled rules are not
+	// emitted into a separate CR and remain entirely off (the bare CR continues to
+	// receive only bare absent(metric) rules). Set this iff AbsentLabel is non-empty.
+	LabeledPrometheusRuleName AbsencePromRuleNameGenerator
 	// KeepLabel is a map of labels that will be retained from the original alert rule and
 	// passed on to its corresponding absence alert rule.
 	KeepLabel KeepLabel
@@ -102,7 +106,7 @@ func (r *PrometheusRuleReconciler) handleObjectNotFound(ctx context.Context, key
 	log := r.Log.WithValues("name", key.Name, "namespace", key.Namespace)
 
 	// Step 1: check if the object is a PrometheusRule or an AbsencePrometheusRule.
-	if strings.HasSuffix(key.Name, absencePromRuleNameSuffix) {
+	if isAbsencePromRuleName(key.Name) {
 		// In case that an AbsencePrometheusRule no longer exists we don't have to do any
 		// further processing. If it still exists then it will be handled the next time it
 		// is reconciled.
@@ -175,10 +179,7 @@ func (r *PrometheusRuleReconciler) reconcileObject(
 	// elapsed).
 	if parseBool(l[labelOperatorDisable]) {
 		log.V(logLevelDebug).Info("operator disabled for this PrometheusRule")
-		aPRName, err := r.PrometheusRuleName(obj)
-		if err == nil {
-			err = r.cleanUpOrphanedAbsenceAlertRules(ctx, key, aPRName)
-		}
+		err := r.cleanUpAllAbsencePromRulesFor(ctx, obj, key)
 		if err != nil {
 			if !apierrors.IsNotFound(err) && !errors.Is(err, errCorrespondingAbsencePromRuleNotExists) {
 				log.Error(err, "could not clean up orphaned absence alert rules")

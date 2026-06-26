@@ -411,7 +411,12 @@ var _ = Describe("Alert Rule", func() {
 			)
 		})
 
-		It("non-equality (regex) matcher for a requested label: label not collected → only bare rule", func() {
+		It("non-equality (regex) matcher for a requested label: produces bare + labeled rules preserving the regex", func() {
+			// Regression test for the user-reported gap where
+			// `thanos_objstore_bucket_operation_failures_total{job=~".*compactor.*"}`
+			// only produced a bare absent() rule. The labeled rule must use
+			// the same =~ operator the source expression used, so that the
+			// generated PromQL targets the same series set.
 			rule := monitoringv1.Rule{
 				Alert:  "RegexLabelMatcher",
 				Expr:   intstr.FromString(`my_metric{namespace=~"prod.*"} > 0`),
@@ -419,8 +424,38 @@ var _ = Describe("Alert Rule", func() {
 			}
 			actual, err := parseRuleAll(rule, keepLabel, absentLabel)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actual).To(HaveLen(1))
+			checkRules(actual,
+				[]string{
+					"AbsentContainersK8sMyMetric",
+					"AbsentContainersK8sMyMetricProd",
+				},
+				[]string{
+					`absent(my_metric)`,
+					`absent(my_metric{namespace=~"prod.*"})`,
+				},
+			)
+		})
+
+		It("preserves all matcher types (=, !=, =~, !~) for requested labels", func() {
+			// Each matcher type must round-trip into the labeled absent()
+			// call so the labeled rule targets the same series the source
+			// expression does. The bare rule is always the same regardless
+			// of matcher type — it only depends on the metric name.
+			rule := monitoringv1.Rule{
+				Alert: "AllMatcherTypes",
+				Expr: intstr.FromString(
+					`my_metric{namespace="prod",region!="dev",job=~".*compactor.*",pod!~"canary.*"} > 0`,
+				),
+				Labels: ruleLabels,
+			}
+			actual, err := parseRuleAll(rule, keepLabel, AbsentLabel{"*": true})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual).To(HaveLen(2))
 			Expect(actual[0].Expr.String()).To(Equal(`absent(my_metric)`))
+			// Names are sorted alphabetically inside the absent() call.
+			Expect(actual[1].Expr.String()).To(Equal(
+				`absent(my_metric{job=~".*compactor.*",namespace="prod",pod!~"canary.*",region!="dev"})`,
+			))
 		})
 
 		It(`wildcard "*" matches every non-__name__ label: collects all equality matchers`, func() {

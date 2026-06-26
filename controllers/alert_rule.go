@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -32,10 +33,23 @@ type metricNameExtractor struct {
 	// from metric selectors and included in the generated absent() call.
 	absentLabel AbsentLabel
 
-	// found maps each metric name to the list of label-value maps seen across
-	// all VectorSelector occurrences of that metric in the expression. Each
-	// element of the slice corresponds to one VectorSelector node.
-	found map[string][]map[string]string
+	// found maps each metric name to the per-VectorSelector occurrences seen
+	// for that metric in the expression. Each entry of the outer slice is one
+	// VectorSelector; each element of the inner slice is one label matcher
+	// preserved from that selector (filtered down to the labels requested by
+	// AbsentLabel). The matcher type (=, !=, =~, !~) is preserved so the
+	// generated absent() call uses the same operator the source expression used.
+	found map[string][][]labelMatcher
+}
+
+// labelMatcher is the minimal subset of promlabels.Matcher we carry from the
+// PromQL parser into the absent() emitter. We can't use promlabels.Matcher
+// directly because it lazily compiles regex values and we want a pure data
+// shape that's cheap to deduplicate and stable to render.
+type labelMatcher struct {
+	Name  string
+	Value string
+	Type  promlabels.MatchType
 }
 
 var reCache sync.Map
@@ -97,21 +111,27 @@ func (mex *metricNameExtractor) Visit(node parser.Node, path []parser.Node) (par
 		// Skip "up" metric, it is automatically injected by Prometheus to describe
 		// Prometheus scraping jobs.
 	default:
-		// Collect equality label matchers for any requested absent labels.
-		// Only MatchEqual matchers are considered because only they produce a
-		// single deterministic value suitable for use in an absent() selector.
-		matchers := make(map[string]string)
+		// Collect every matcher whose label name is requested by AbsentLabel,
+		// preserving the matcher type (=, !=, =~, !~). Previously only
+		// MatchEqual was kept, which silently dropped legitimate selectors
+		// like `{job=~".*compactor.*"}` and produced only the unhelpful bare
+		// absent(metric) rule. Each matcher type renders directly into PromQL
+		// in buildAbsentExpr, so the generated labeled rule mirrors what the
+		// source expression actually selects.
+		var matchers []labelMatcher
 		if len(mex.absentLabel) > 0 {
 			for _, lm := range vs.LabelMatchers {
 				if lm.Name == "__name__" {
 					continue
 				}
-				if lm.Type != promlabels.MatchEqual {
+				if !mex.absentLabel.Matches(lm.Name) {
 					continue
 				}
-				if mex.absentLabel.Matches(lm.Name) {
-					matchers[lm.Name] = lm.Value
-				}
+				matchers = append(matchers, labelMatcher{
+					Name:  lm.Name,
+					Value: lm.Value,
+					Type:  lm.Type,
+				})
 			}
 		}
 		mex.found[name] = append(mex.found[name], matchers)
@@ -288,7 +308,7 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		logger:      logger,
 		expr:        exprStr,
 		absentLabel: absentLabel,
-		found:       map[string][]map[string]string{},
+		found:       map[string][][]labelMatcher{},
 	}
 	p := parser.NewParser(parser.Options{})
 	exprNode, err := p.ParseExpr(exprStr)
@@ -368,7 +388,7 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 		// alert-name suffix. buildAbsentExpr and comboSuffix both already
 		// treat an empty combo as "no matchers / no suffix", so the bare and
 		// labeled cases share the same construction path.
-		emit := func(dst *[]monitoringv1.Rule, combo map[string]string) {
+		emit := func(dst *[]monitoringv1.Rule, combo []labelMatcher) {
 			*dst = append(*dst, monitoringv1.Rule{
 				Alert:       makeAlertName(comboSuffix(combo)),
 				Expr:        intstr.FromString(buildAbsentExpr(m, combo)),
@@ -406,15 +426,19 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel, ab
 	return bare, labeled, nil
 }
 
-// distinctLabelCombos returns the deduplicated set of label-value maps from
+// distinctLabelCombos returns the deduplicated set of matcher combos from
 // occurrences. Each occurrence has already been filtered to the labels
 // requested by AbsentLabel at collection time (see metricNameExtractor.Visit),
 // so this function only needs to deduplicate identical combos.
-func distinctLabelCombos(occurrences []map[string]string) []map[string]string {
+//
+// Two combos are considered identical iff they contain the same set of
+// (name, type, value) triples, so `job=~".*compactor.*"` and `job="compactor"`
+// remain distinct and each contributes its own labeled absence rule.
+func distinctLabelCombos(occurrences [][]labelMatcher) [][]labelMatcher {
 	seen := make(map[string]struct{})
-	var result []map[string]string
+	var result [][]labelMatcher
 	for _, occ := range occurrences {
-		key := mapKey(occ)
+		key := matchersKey(occ)
 		if _, exists := seen[key]; !exists {
 			seen[key] = struct{}{}
 			result = append(result, occ)
@@ -423,53 +447,62 @@ func distinctLabelCombos(occurrences []map[string]string) []map[string]string {
 	return result
 }
 
-// sortedKeys returns the keys of m in ascending string order.
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
+// sortMatchers returns a copy of in sorted by label name (ascending). The
+// emitted PromQL and the dedup key both rely on a deterministic key order so
+// that {a="x",b="y"} and {b="y",a="x"} produce identical output.
+func sortMatchers(in []labelMatcher) []labelMatcher {
+	out := make([]labelMatcher, len(in))
+	copy(out, in)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }
 
-// mapKey returns a canonical string representation of a label map for dedup purposes.
-func mapKey(m map[string]string) string {
+// matchersKey returns a canonical string representation of a matcher slice
+// for dedup purposes. Includes the match type so `=` and `=~` against the
+// same name/value still produce distinct keys.
+func matchersKey(m []labelMatcher) string {
+	sorted := sortMatchers(m)
 	var sb strings.Builder
-	for _, k := range sortedKeys(m) {
-		sb.WriteString(k)
-		sb.WriteByte('=')
-		sb.WriteString(m[k])
+	for _, lm := range sorted {
+		sb.WriteString(lm.Name)
+		sb.WriteString(lm.Type.String())
+		sb.WriteString(lm.Value)
 		sb.WriteByte(',')
 	}
 	return sb.String()
 }
 
-// comboSuffix returns a stable string derived from label values, suitable for
-// appending to an alert name to make it unique.
-// Keys are sorted; values are joined with underscores.
+// comboSuffix returns a stable string derived from matcher values, suitable
+// for appending to an alert name to make it unique.
+// Names are sorted; values are joined with underscores. The non-alphanumeric
+// splitter in makeAlertName then strips regex punctuation, so a value like
+// ".*compactor.*" cleanly becomes "Compactor" in the final alert name.
 // An empty or nil combo returns "", which makeAlertName treats as "no suffix".
-func comboSuffix(combo map[string]string) string {
-	parts := make([]string, 0, len(combo))
-	for _, k := range sortedKeys(combo) {
-		parts = append(parts, combo[k])
+func comboSuffix(combo []labelMatcher) string {
+	sorted := sortMatchers(combo)
+	parts := make([]string, 0, len(sorted))
+	for _, lm := range sorted {
+		parts = append(parts, lm.Value)
 	}
 	return strings.Join(parts, "_")
 }
 
 // buildAbsentExpr constructs the PromQL absent() expression for a metric with
-// the given label matchers map. Keys are sorted for deterministic output.
-// An empty or nil matchers map yields bare absent(metricName), so callers can
-// use the same emission path for the bare rule and labeled rules.
-// E.g.: buildAbsentExpr("my_metric", map[string]string{"namespace":"prod","pod":"api"})
-// returns: absent(my_metric{namespace="prod",pod="api"})
-func buildAbsentExpr(metricName string, matchers map[string]string) string {
+// the given label matchers. Names are sorted for deterministic output, and
+// each matcher is rendered with its source operator (=, !=, =~, !~) and a
+// properly quoted value so regex characters and embedded quotes survive
+// intact. An empty or nil matchers slice yields bare absent(metricName), so
+// callers can use the same emission path for the bare rule and labeled rules.
+// E.g.: buildAbsentExpr("my_metric", []labelMatcher{{Name: "job", Value: ".*compactor.*", Type: promlabels.MatchRegexp}})
+// returns: absent(my_metric{job=~".*compactor.*"})
+func buildAbsentExpr(metricName string, matchers []labelMatcher) string {
 	if len(matchers) == 0 {
 		return fmt.Sprintf("absent(%s)", metricName)
 	}
-	parts := make([]string, 0, len(matchers))
-	for _, k := range sortedKeys(matchers) {
-		parts = append(parts, fmt.Sprintf(`%s="%s"`, k, matchers[k]))
+	sorted := sortMatchers(matchers)
+	parts := make([]string, 0, len(sorted))
+	for _, lm := range sorted {
+		parts = append(parts, fmt.Sprintf("%s%s%s", lm.Name, lm.Type.String(), strconv.Quote(lm.Value)))
 	}
 	return fmt.Sprintf("absent(%s{%s})", metricName, strings.Join(parts, ","))
 }

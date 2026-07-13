@@ -196,16 +196,6 @@ func (r *PrometheusRuleReconciler) reconcileObject(
 	if err == nil {
 		setReconcileGauge(key)
 		log.V(logLevelDebug).Info("successfully reconciled PrometheusRule")
-	} else if errors.Is(err, errEmptyAbsencePromRuleName) {
-		// The name template rendered to an empty string because this
-		// PrometheusRule is missing the labels the template reads. Retrying
-		// won't help — the same label set will keep rendering empty — so
-		// log at info level and drop the reconcile without requeuing. When
-		// the user adds the required label the resource change will trigger
-		// a fresh reconcile.
-		log.Info("skipping PrometheusRule: it is missing labels required by the AbsencePrometheusRule name template", "err", err)
-		deleteReconcileGauge(key)
-		return nil
 	}
 	return err
 }

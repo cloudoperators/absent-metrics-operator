@@ -46,14 +46,6 @@ func CreateLabeledAbsencePromRuleNameGenerator(tmplStr string) (AbsencePromRuleN
 	return createAbsencePromRuleNameGenerator(tmplStr, labeledAbsencePromRuleNameSuffix)
 }
 
-// errEmptyAbsencePromRuleName is returned by the name generator when the
-// user-supplied template renders to an empty string (typically because the
-// source PrometheusRule is missing the labels the template reads). It is
-// sentinel so callers can log-and-skip instead of failing the reconcile,
-// which would otherwise thrash forever on a PR that will never satisfy the
-// template.
-var errEmptyAbsencePromRuleName = errors.New("AbsencePrometheusRule name template rendered to an empty string")
-
 // createAbsencePromRuleNameGenerator is the shared template-driven name generator used
 // by both the bare and labeled flavours. The two public constructors above differ only
 // in the suffix they pass in.
@@ -81,19 +73,7 @@ func createAbsencePromRuleNameGenerator(tmplStr, suffix string) (AbsencePromRule
 			return "", fmt.Errorf("could not generate AbsencePrometheusRule name: %w", err)
 		}
 
-		// Reject empty template output. Without this guard the returned name
-		// is just the suffix ("-absent-metric-alert-rules"), which fails
-		// Kubernetes' RFC 1123 subdomain validation ("must start and end
-		// with an alphanumeric character") and every reconcile of a
-		// PrometheusRule that doesn't set the label(s) the template reads
-		// (e.g. neither "thanos-ruler" nor "prometheus" on the default
-		// template) fails with an "Invalid value" API error.
-		prefix := buf.String()
-		if prefix == "" {
-			return "", fmt.Errorf("%w for %s/%s; the PrometheusRule is missing the labels the template reads",
-				errEmptyAbsencePromRuleName, pr.GetNamespace(), pr.GetName())
-		}
-		return prefix + suffix, nil
+		return buf.String() + suffix, nil
 	}, nil
 }
 

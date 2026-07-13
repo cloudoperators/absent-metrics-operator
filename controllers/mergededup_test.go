@@ -4,11 +4,9 @@
 package controllers
 
 import (
-	"errors"
 	"testing"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -147,32 +145,5 @@ func TestMergeAbsenceRuleGroups_DropsGroupsThatBecomeEmpty(t *testing.T) {
 	out := mergeAbsenceRuleGroups("thanos-b", existing, fresh)
 	if len(out) != 1 || out[0].Name != "thanos-a/g" {
 		t.Fatalf("expected only thanos-a/g to remain, got %#v", flattenGroups(out))
-	}
-}
-
-func TestCreateAbsencePromRuleNameGenerator_EmptyTemplateOutput(t *testing.T) {
-	// The default name template reads .metadata.labels.thanos-ruler /
-	// .metadata.labels.prometheus. A source PR that sets neither renders
-	// the template to "", producing an RFC1123-invalid CR name like
-	// "-absent-metric-alert-rules". The generator must fail with the
-	// sentinel error so the reconciler can log-and-skip instead of
-	// thrashing.
-	gen, err := CreateAbsencePromRuleNameGenerator(DefaultAbsencePromRuleNameTemplate)
-	if err != nil {
-		t.Fatalf("unexpected generator construction error: %v", err)
-	}
-	pr := &monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-thanos-rules",
-			Namespace: "kube-monitoring",
-			// Deliberately no thanos-ruler / prometheus labels.
-		},
-	}
-	name, err := gen(pr)
-	if err == nil {
-		t.Fatalf("expected error, got name=%q", name)
-	}
-	if !errors.Is(err, errEmptyAbsencePromRuleName) {
-		t.Fatalf("expected errEmptyAbsencePromRuleName, got %v", err)
 	}
 }

@@ -46,6 +46,14 @@ func CreateLabeledAbsencePromRuleNameGenerator(tmplStr string) (AbsencePromRuleN
 	return createAbsencePromRuleNameGenerator(tmplStr, labeledAbsencePromRuleNameSuffix)
 }
 
+// errEmptyAbsencePromRuleName is returned by the name generator when the
+// user-supplied template renders to an empty string (typically because the
+// source PrometheusRule is missing the labels the template reads). It is
+// sentinel so callers can log-and-skip instead of failing the reconcile,
+// which would otherwise thrash forever on a PR that will never satisfy the
+// template.
+var errEmptyAbsencePromRuleName = errors.New("AbsencePrometheusRule name template rendered to an empty string")
+
 // createAbsencePromRuleNameGenerator is the shared template-driven name generator used
 // by both the bare and labeled flavours. The two public constructors above differ only
 // in the suffix they pass in.
@@ -73,7 +81,19 @@ func createAbsencePromRuleNameGenerator(tmplStr, suffix string) (AbsencePromRule
 			return "", fmt.Errorf("could not generate AbsencePrometheusRule name: %w", err)
 		}
 
-		return buf.String() + suffix, nil
+		// Reject empty template output. Without this guard the returned name
+		// is just the suffix ("-absent-metric-alert-rules"), which fails
+		// Kubernetes' RFC 1123 subdomain validation ("must start and end
+		// with an alphanumeric character") and every reconcile of a
+		// PrometheusRule that doesn't set the label(s) the template reads
+		// (e.g. neither "thanos-ruler" nor "prometheus" on the default
+		// template) fails with an "Invalid value" API error.
+		prefix := buf.String()
+		if prefix == "" {
+			return "", fmt.Errorf("%w for %s/%s; the PrometheusRule is missing the labels the template reads",
+				errEmptyAbsencePromRuleName, pr.GetNamespace(), pr.GetName())
+		}
+		return prefix + suffix, nil
 	}, nil
 }
 
@@ -479,18 +499,63 @@ func (r *PrometheusRuleReconciler) reconcileOneAbsenceCR(
 	return r.createAbsencePrometheusRule(ctx, absencePromRule)
 }
 
-// mergeAbsenceRuleGroups merges existing and newly generated AbsenceRuleGroups. If the
-// same AbsenceRuleGroup exists in both 'existing' and 'new' then the newer one will be
-// used.
+// mergeAbsenceRuleGroups produces the full set of absence rule groups that should
+// live in an AbsencePrometheusRule after reconciling one source PrometheusRule.
+//
+// It combines newRuleGroups (freshly generated for the source PR named promRuleName)
+// with any groups already stored in existingRuleGroups that belong to OTHER source
+// PRs, then deduplicates identical absent() rules that span multiple source PRs.
+//
+// Two source PRs can reference the same metric — e.g. several thanos-tagged
+// PrometheusRules each carrying an alert on kube_node_status_condition — and each
+// contributes its own group named "<sourcePR>/<originalGroup>" to the aggregated
+// CR. Without cross-source dedup the CR ends up with several identical
+// `absent(kube_node_status_condition)` entries, one per source PR.
+//
+// Dedup key is (Alert, Expr). To keep the resulting CR content independent of
+// reconciliation order (so different source PRs don't ping-pong duplicates in and
+// out of the CR on every reconcile), the winner for each (Alert, Expr) pair is
+// picked deterministically: the group whose name sorts lex-smallest wins, which
+// — because group names are "<sourcePR>/<originalGroup>" — effectively picks the
+// lex-smallest source PR. Groups that end up empty after dedup are dropped.
 func mergeAbsenceRuleGroups(promRuleName string, existingRuleGroups, newRuleGroups []monitoringv1.RuleGroup) []monitoringv1.RuleGroup {
-	var result []monitoringv1.RuleGroup
-	// Add the absence rule groups for the PrometheusRule that we are currently dealing with.
-	result = append(result, newRuleGroups...)
-	// Carry over the absence rule groups for other PrometheusRule(s) as is.
+	// Strip the current source PR's stale groups from existing (they are being
+	// replaced by newRuleGroups) and keep every group that belongs to other
+	// source PRs. The trailing "/" is significant: without it a PR named
+	// "example-thanos-rules" would also match groups from an unrelated
+	// "example-thanos-rules-v2".
+	prefix := promRuleName + "/"
+	var merged []monitoringv1.RuleGroup
+	merged = append(merged, newRuleGroups...)
 	for _, g := range existingRuleGroups {
-		if !strings.HasPrefix(g.Name, promRuleName) {
-			result = append(result, g)
+		if !strings.HasPrefix(g.Name, prefix) {
+			merged = append(merged, g)
 		}
 	}
-	return result
+
+	// Sort groups by name so the (Alert, Expr) dedup below always sees the
+	// same iteration order regardless of which source PR triggered this
+	// reconcile — that's what makes the resulting CR content stable.
+	sort.SliceStable(merged, func(i, j int) bool {
+		return merged[i].Name < merged[j].Name
+	})
+
+	seen := make(map[string]bool)
+	deduped := make([]monitoringv1.RuleGroup, 0, len(merged))
+	for _, g := range merged {
+		filtered := make([]monitoringv1.Rule, 0, len(g.Rules))
+		for _, r := range g.Rules {
+			key := r.Alert + "\x00" + r.Expr.String()
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			filtered = append(filtered, r)
+		}
+		if len(filtered) > 0 {
+			g.Rules = filtered
+			deduped = append(deduped, g)
+		}
+	}
+	return deduped
 }

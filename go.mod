@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.24.0
 	github.com/prometheus/prometheus v0.311.3
 	github.com/sapcc/go-api-declarations v1.24.0
-	github.com/sapcc/go-bits v0.0.0-20260721134224-acf388eecf26
+	github.com/sapcc/go-bits v0.0.0-20260723170232-89c8670b5841
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.40.0
@@ -62,7 +62,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.70.0 // indirect
+	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

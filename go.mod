@@ -11,10 +11,10 @@ require (
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0
-	github.com/prometheus/client_golang v1.24.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/prometheus v0.311.3
 	github.com/sapcc/go-api-declarations v1.24.0
-	github.com/sapcc/go-bits v0.0.0-20260723170232-89c8670b5841
+	github.com/sapcc/go-bits v0.0.0-20260730170321-f6f727520601
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.40.0

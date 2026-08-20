@@ -204,10 +204,10 @@ github.com/prometheus/prometheus/util/annotations
 github.com/prometheus/prometheus/util/features
 github.com/prometheus/prometheus/util/kahansum
 github.com/prometheus/prometheus/util/strutil
-# github.com/sapcc/go-api-declarations v1.24.0
+# github.com/sapcc/go-api-declarations v1.25.0
 ## explicit; go 1.26
 github.com/sapcc/go-api-declarations/bininfo
-# github.com/sapcc/go-bits v0.0.0-20260813170327-ea1a14435d35
+# github.com/sapcc/go-bits v0.0.0-20260818140528-75bdd20c7867
 ## explicit; go 1.26
 github.com/sapcc/go-bits/errext
 github.com/sapcc/go-bits/logg
@@ -249,7 +249,7 @@ go.yaml.in/yaml/v3
 # golang.org/x/mod v0.38.0
 ## explicit; go 1.25.0
 golang.org/x/mod/semver
-# golang.org/x/net v0.57.0
+# golang.org/x/net v0.58.0
 ## explicit; go 1.25.0
 golang.org/x/net/html
 golang.org/x/net/html/atom

@@ -19,7 +19,7 @@ The changes should be grouped using the following categories (in order of preced
 - Deprecated: for soon-to-be removed features
 -->
 
-## [Unreleased]()
+## [Unreleased]
 
 ## 0.9.8 - 2026-02-12
 

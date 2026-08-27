@@ -74,7 +74,7 @@ func (r *PrometheusRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{RequeueAfter: requeueInterval}, nil
 		}
 		// Requeue for later processing.
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{}, err
 	}
 
 	if parseBool(promRule.Labels[labelOperatorDisable]) {

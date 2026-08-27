@@ -1,6 +1,6 @@
 module github.com/sapcc/absent-metrics-operator
 
-go 1.26.0
+go 1.27
 
 // Note: in case of dependency issues, ensure that the "k8s.io/*" and
 // "github.com/prometheus/*" dependencies have the same versions as used by
@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/prometheus v0.311.3
 	github.com/sapcc/go-api-declarations v1.25.0
-	github.com/sapcc/go-bits v0.0.0-20260818140528-75bdd20c7867
+	github.com/sapcc/go-bits v0.0.0-20260827091731-7669cbdb53fb
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.41.0

@@ -228,4 +228,133 @@ var _ = Describe("Alert Rule", func() {
 			nil, // absence alerts are not generated for record rules
 		),
 	)
+
+	// Tests for ParseRuleGroups deduplication
+	Describe("ParseRuleGroups", func() {
+		duration := monitoringv1.Duration("10m")
+
+		It("should deduplicate absent alerts when multiple source alerts use the same metric", func() {
+			in := []monitoringv1.RuleGroup{
+				{
+					Name: "SQSReceivingQueue",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "WarningSQSReceivingQueue",
+							Expr:  intstr.FromString(`aws_receiving_cronus_provider > 100`),
+							Labels: map[string]string{
+								"support_group": "email",
+								"tier":          "os",
+								"service":       "email",
+								"severity":      "warning",
+							},
+						},
+						{
+							Alert: "CriticalSQSReceivingQueue",
+							Expr:  intstr.FromString(`aws_receiving_cronus_provider > 500`),
+							Labels: map[string]string{
+								"support_group": "email",
+								"tier":          "os",
+								"service":       "email",
+								"severity":      "critical",
+							},
+						},
+					},
+				},
+			}
+
+			result, err := ParseRuleGroups(logger, in, "cronus-exporter-alerts", keepLabel)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+
+			// Should only have ONE absence alert rule, not two
+			Expect(result[0].Rules).To(HaveLen(1))
+			Expect(result[0].Rules[0].Alert).To(Equal("AbsentEmailAwsReceivingCronusProvider"))
+			Expect(result[0].Rules[0].Expr).To(Equal(intstr.FromString(`absent(aws_receiving_cronus_provider)`)))
+			Expect(result[0].Rules[0].For).To(Equal(&duration))
+			Expect(result[0].Rules[0].Labels).To(Equal(map[string]string{
+				"context":       "absent-metrics",
+				"severity":      "info",
+				"support_group": "email",
+				"tier":          "os",
+				"service":       "email",
+			}))
+		})
+
+		It("should not deduplicate absent alerts for different metrics", func() {
+			in := []monitoringv1.RuleGroup{
+				{
+					Name: "SwiftAlerts",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "SwiftReconCheck",
+							Expr:  intstr.FromString(`avg(swift_recon_task_exit_code) > 0.2`),
+							Labels: map[string]string{
+								"support_group": "not-containers",
+								"tier":          "os",
+								"service":       "swift",
+							},
+						},
+						{
+							Alert: "SwiftDispersionCheck",
+							Expr:  intstr.FromString(`avg(swift_dispersion_task_exit_code) > 0.2`),
+							Labels: map[string]string{
+								"support_group": "not-containers",
+								"tier":          "os",
+								"service":       "swift",
+							},
+						},
+					},
+				},
+			}
+
+			result, err := ParseRuleGroups(logger, in, "swift-alerts", keepLabel)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+
+			// Should have TWO absence alert rules since metrics are different
+			Expect(result[0].Rules).To(HaveLen(2))
+		})
+
+		It("should deduplicate when same metric appears in different expressions across rules", func() {
+			in := []monitoringv1.RuleGroup{
+				{
+					Name: "MemoryAlerts",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "HighMemoryWarning",
+							Expr:  intstr.FromString(`node_memory_available_bytes / node_memory_total_bytes < 0.2`),
+							Labels: map[string]string{
+								"support_group": "containers",
+								"service":       "node",
+							},
+						},
+						{
+							Alert: "HighMemoryCritical",
+							Expr:  intstr.FromString(`node_memory_available_bytes / node_memory_total_bytes < 0.1`),
+							Labels: map[string]string{
+								"support_group": "containers",
+								"service":       "node",
+							},
+						},
+					},
+				},
+			}
+
+			result, err := ParseRuleGroups(logger, in, "node-alerts", keepLabel)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+
+			// Both alerts use the same two metrics, so we should get exactly 2 absence alerts
+			Expect(result[0].Rules).To(HaveLen(2))
+
+			exprs := make([]string, len(result[0].Rules))
+			for i, r := range result[0].Rules {
+				exprs[i] = r.Expr.String()
+			}
+			Expect(exprs).To(ContainElements(
+				"absent(node_memory_available_bytes)",
+				"absent(node_memory_total_bytes)",
+			))
+		})
+	})
 })

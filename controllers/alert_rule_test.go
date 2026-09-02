@@ -268,6 +268,12 @@ var _ = Describe("Alert Rule", func() {
 
 			// Should only have ONE absence alert rule, not two
 			Expect(result[0].Rules).To(HaveLen(1))
+			// Verify description includes both source alerts in sorted order
+			Expect(result[0].Rules[0].Annotations["description"]).To(Equal(
+				"The metric 'aws_receiving_cronus_provider' is missing. " +
+					"'CriticalSQSReceivingQueue', 'WarningSQSReceivingQueue' alert using it may not fire as intended. " +
+					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
+			))
 			Expect(result[0].Rules[0].Alert).To(Equal("AbsentEmailAwsReceivingCronusProvider"))
 			Expect(result[0].Rules[0].Expr).To(Equal(intstr.FromString(`absent(aws_receiving_cronus_provider)`)))
 			Expect(result[0].Rules[0].For).To(Equal(&duration))

@@ -182,9 +182,12 @@ func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleNa
 
 		absenceAlertRules := make([]monitoringv1.Rule, 0, len(seenMetrics))
 		for _, entry := range seenMetrics {
-			entry.rule.Annotations["description"] = absentAlertDescription(
-				entry.rule.Annotations["summary"],
-				entry.sourceAlerts,
+			sort.Strings(entry.sourceAlerts)
+			metricName := strings.TrimPrefix(entry.rule.Annotations["summary"], "missing ")
+			entry.rule.Annotations["description"] = fmt.Sprintf(
+				"The metric '%s' is missing. '%s' alert using it may not fire as intended. "+
+					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
+				metricName, strings.Join(entry.sourceAlerts, "', '"),
 			)
 			absenceAlertRules = append(absenceAlertRules, entry.rule)
 		}
@@ -203,24 +206,6 @@ func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleNa
 }
 
 var nonAlphaNumericRx = regexp.MustCompile(`[^a-zA-Z0-9]`)
-
-// absentAlertDescription generates the description annotation for an absent alert.
-// It handles singular/plural form based on the number of source alerts.
-func absentAlertDescription(summary string, sourceAlerts []string) string {
-	metricName := strings.TrimPrefix(summary, "missing ")
-
-	sort.Strings(sourceAlerts)
-	alertRef := fmt.Sprintf("'%s' alert", sourceAlerts[0])
-	if len(sourceAlerts) > 1 {
-		alertRef = fmt.Sprintf("'%s' alerts", strings.Join(sourceAlerts, "', '"))
-	}
-
-	return fmt.Sprintf(
-		"The metric '%s' is missing. %s using it may not fire as intended. "+
-			"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
-		metricName, alertRef,
-	)
-}
 
 // parseRule generates the corresponding absence alert rules for a given Rule.
 // Since an alert expression can reference multiple time series therefore a slice of

@@ -207,7 +207,7 @@ github.com/prometheus/prometheus/util/strutil
 # github.com/sapcc/go-api-declarations v1.25.0
 ## explicit; go 1.26
 github.com/sapcc/go-api-declarations/bininfo
-# github.com/sapcc/go-bits v0.0.0-20260903170501-70fd009916cb
+# github.com/sapcc/go-bits v0.0.0-20260903192122-1774475e70e3
 ## explicit; go 1.27
 github.com/sapcc/go-bits/errext
 github.com/sapcc/go-bits/logg

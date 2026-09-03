@@ -7,18 +7,15 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("AbsencePrometheusRule", func() {
 	pr := &monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foobar.alerts",
-			Namespace: "outerspace",
-			Labels: map[string]string{
-				"prometheus":   "openstack",
-				"thanos-ruler": "titan",
-			},
+		Name:      "foobar.alerts",
+		Namespace: "outerspace",
+		Labels: map[string]string{
+			"prometheus":   "openstack",
+			"thanos-ruler": "titan",
 		},
 	}
 

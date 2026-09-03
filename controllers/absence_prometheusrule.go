@@ -16,7 +16,6 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -80,11 +79,9 @@ func (r *PrometheusRuleReconciler) newAbsencePrometheusRule(name, namespace stri
 	}
 
 	return &monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    l,
-		},
+		Name:      name,
+		Namespace: namespace,
+		Labels:    l,
 	}
 }
 

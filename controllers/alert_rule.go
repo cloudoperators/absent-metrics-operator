@@ -137,6 +137,11 @@ type ruleGroupParseError struct {
 	cause error
 }
 
+type absentEntry struct {
+	rule         monitoringv1.Rule
+	sourceAlerts []string
+}
+
 // Error implements the error interface.
 func (e *ruleGroupParseError) Error() string {
 	return e.cause.Error()
@@ -145,6 +150,10 @@ func (e *ruleGroupParseError) Error() string {
 // ParseRuleGroups takes a slice of RuleGroup that has alert rules and returns
 // a new slice of RuleGroup that has the corresponding absence alert rules.
 //
+// If multiple source alerts within a RuleGroup use the same metric, only one
+// absence alert rule is generated for that metric. The description annotation
+// will reference all source alerts that use the metric.
+//
 // The labels specified in the keepLabel map will be carried over to the corresponding
 // absence alerts unless templating (i.e. $labels) was used for these labels.
 //
@@ -152,24 +161,41 @@ func (e *ruleGroupParseError) Error() string {
 func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleName string, keepLabel KeepLabel) ([]monitoringv1.RuleGroup, error) {
 	out := make([]monitoringv1.RuleGroup, 0, len(in))
 	for _, g := range in {
-		var absenceAlertRules []monitoringv1.Rule
+		seenMetrics := make(map[string]*absentEntry)
 		for _, r := range g.Rules {
 			rules, err := parseRule(logger, r, keepLabel)
 			if err != nil {
 				return nil, &ruleGroupParseError{cause: err}
 			}
-			if len(rules) > 0 {
-				absenceAlertRules = append(absenceAlertRules, rules...)
+			for _, rule := range rules {
+				exprStr := rule.Expr.String()
+				if entry, exists := seenMetrics[exprStr]; exists {
+					entry.sourceAlerts = append(entry.sourceAlerts, r.Alert)
+				} else {
+					seenMetrics[exprStr] = &absentEntry{
+						rule:         rule,
+						sourceAlerts: []string{r.Alert},
+					}
+				}
 			}
 		}
 
-		if len(absenceAlertRules) > 0 {
-			// Sort alert rules for consistent test results.
+		absenceAlertRules := make([]monitoringv1.Rule, 0, len(seenMetrics))
+		for _, entry := range seenMetrics {
+			sort.Strings(entry.sourceAlerts)
+			metricName := strings.TrimPrefix(entry.rule.Annotations["summary"], "missing ")
+			entry.rule.Annotations["description"] = fmt.Sprintf(
+				"The metric '%s' is missing. '%s' alert using it may not fire as intended. "+
+					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
+				metricName, strings.Join(entry.sourceAlerts, "', '"),
+			)
+			absenceAlertRules = append(absenceAlertRules, entry.rule)
+		}
 
+		if len(absenceAlertRules) > 0 {
 			sort.SliceStable(absenceAlertRules, func(i, j int) bool {
 				return absenceAlertRules[i].Alert < absenceAlertRules[j].Alert
 			})
-
 			out = append(out, monitoringv1.RuleGroup{
 				Name:  AbsenceRuleGroupName(promRuleName, g.Name),
 				Rules: absenceAlertRules,
@@ -269,11 +295,7 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 		// links in the 'playbook' label.
 		ann := map[string]string{
 			"summary": "missing " + m,
-			"description": fmt.Sprintf(
-				"The metric '%s' is missing. '%s' alert using it may not fire as intended. "+
-					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
-				m, in.Alert,
-			),
+			// description will be set by ParseRuleGroups
 		}
 
 		duration := monitoringv1.Duration("10m")

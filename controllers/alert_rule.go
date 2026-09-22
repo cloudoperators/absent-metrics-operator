@@ -184,6 +184,9 @@ func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleNa
 		for _, entry := range seenMetrics {
 			sort.Strings(entry.sourceAlerts)
 			metricName := strings.TrimPrefix(entry.rule.Annotations["summary"], "missing ")
+			// TODO: remove the link from description and add a 'playbook' label,
+			// when our upstream solution gets the ability to process hardcoded
+			// links in the 'playbook' label.
 			entry.rule.Annotations["description"] = fmt.Sprintf(
 				"The metric '%s' is missing. '%s' alert using it may not fire as intended. "+
 					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
@@ -290,9 +293,6 @@ func parseRule(logger logr.Logger, in monitoringv1.Rule, keepLabel KeepLabel) ([
 			}
 		}
 
-		// TODO: remove the link from description and add a 'playbook' label,
-		// when our upstream solution gets the ability to process hardcoded
-		// links in the 'playbook' label.
 		ann := map[string]string{
 			"summary": "missing " + m,
 			// description will be set by ParseRuleGroups

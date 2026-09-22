@@ -189,7 +189,7 @@ func ParseRuleGroups(logger logr.Logger, in []monitoringv1.RuleGroup, promRuleNa
 			// links in the 'playbook' label.
 			entry.rule.Annotations["description"] = fmt.Sprintf(
 				"The metric '%s' is missing. '%s' alert using it may not fire as intended. "+
-					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
+					"See <https://github.com/cloudoperators/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
 				metricName, strings.Join(entry.sourceAlerts, "', '"),
 			)
 			absenceAlertRules = append(absenceAlertRules, entry.rule)

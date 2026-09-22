@@ -272,7 +272,7 @@ var _ = Describe("Alert Rule", func() {
 			Expect(result[0].Rules[0].Annotations["description"]).To(Equal(
 				"The metric 'aws_receiving_cronus_provider' is missing. " +
 					"'CriticalSQSReceivingQueue', 'WarningSQSReceivingQueue' alert using it may not fire as intended. " +
-					"See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
+					"See <https://github.com/cloudoperators/absent-metrics-operator/blob/master/docs/playbook.md|the operator playbook>.",
 			))
 			Expect(result[0].Rules[0].Alert).To(Equal("AbsentEmailAwsReceivingCronusProvider"))
 			Expect(result[0].Rules[0].Expr).To(Equal(intstr.FromString(`absent(aws_receiving_cronus_provider)`)))

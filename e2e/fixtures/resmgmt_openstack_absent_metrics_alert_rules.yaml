@@ -26,7 +26,7 @@ spec:
           annotations:
             description:
               The metric 'limes_foo' is missing. 'OpenstackLimesFoo'
-              alert using it may not fire as intended. See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the
+              alert using it may not fire as intended. See <https://github.com/cloudoperators/absent-metrics-operator/blob/master/docs/playbook.md|the
               operator playbook>.
             summary: missing limes_foo
 
@@ -43,7 +43,7 @@ spec:
           annotations:
             description:
               The metric 'limes_bar' is missing. 'OpenstackLimesBar'
-              alert using it may not fire as intended. See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the
+              alert using it may not fire as intended. See <https://github.com/cloudoperators/absent-metrics-operator/blob/master/docs/playbook.md|the
               operator playbook>.
             summary: missing limes_bar
 
@@ -60,6 +60,6 @@ spec:
           annotations:
             description:
               The metric 'openstack_assignments_per_role' is missing. 'OpenstackLimesUnexpectedCloudViewerRoleAssignments'
-              alert using it may not fire as intended. See <https://github.com/sapcc/absent-metrics-operator/blob/master/docs/playbook.md|the
+              alert using it may not fire as intended. See <https://github.com/cloudoperators/absent-metrics-operator/blob/master/docs/playbook.md|the
               operator playbook>.
             summary: missing openstack_assignments_per_role

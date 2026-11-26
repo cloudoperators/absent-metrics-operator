@@ -17,8 +17,7 @@ name: goreleaser
     types:
       - closed
 permissions:
-  contents: write
-  packages: write
+  contents: read
 jobs:
   release:
     name: goreleaser
@@ -31,9 +30,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && format('refs/tags/v{0}', needs.tag.outputs.version) || github.ref }}
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           check-latest: true
           go-version: 1.27.4
@@ -48,9 +48,12 @@ jobs:
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7
         with:
           args: release --clean --release-notes=./build/release-info
-          version: latest
+          version: v2.20.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+      packages: write
   tag:
     name: tag
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'chore/release-next'
@@ -62,6 +65,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: true
       - name: Read version from CHANGELOG
         id: version
         uses: release-flow/keep-a-changelog-action@74931dec7ecdbfc8e38ac9ae7e8dd84c08db2f32 # v3
@@ -80,3 +84,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${VERSION}" -m "Release ${VERSION}"
           git push origin "${VERSION}"
+    permissions:
+      contents: write
